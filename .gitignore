@@ -1,0 +1,22 @@
+# Python / Django
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+ENV/
+env/
+.env
+db.sqlite3
+*.log
+
+# Node / Frontend
+node_modules/
+npm-debug.log*
+dist/
+build/
+.DS_Store
+
+# Docker
+.docker-compose.override.yml
+data/
+postgres_data/

@@ -1,0 +1,43 @@
+services:
+  # 1. Base de données PostgreSQL (Intégrée dynamiquement à partir de votre commande)
+  db:
+    image: postgres:16
+    container_name: project_postgres
+    environment:
+      POSTGRES_DB: mydatabase
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    restart: always
+
+  # 2. Backend Django API
+  backend:
+    build: ./backend
+    container_name: project_backend
+    ports:
+      - "8000:8000"
+    environment:
+      - POSTGRES_DB=mydatabase
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+    depends_on:
+      - db
+    restart: always
+
+  # 3. Frontend React Nginx
+  frontend:
+    build: ./frontend
+    container_name: project_frontend
+    ports:
+      - "8585:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  postgres_data:
