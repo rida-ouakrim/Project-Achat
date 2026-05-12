@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import FloatingChat from './FloatingChat';
 
 const Layout = () => {
   const userRole = localStorage.getItem('userRole');
@@ -27,6 +28,8 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
+      {/* Injecter le Chatbot intelligent pour le Directeur et l'Équipe Achats */}
+      {(userRole === 'director' || userRole === 'purchasing') && <FloatingChat />}
     </div>
   );
 };

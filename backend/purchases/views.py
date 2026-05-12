@@ -78,3 +78,68 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 supplier_name=instance.supplier,
                 defaults={'price': instance.price}
             )
+
+import os
+import requests
+from rest_framework.decorators import api_view
+
+@api_view(['POST'])
+def ai_chat(request):
+    user_message = request.data.get('message', '')
+    if not user_message:
+        return Response({'error': 'Message manquant'}, status=400)
+
+    # 1. Aggregation du contexte local
+    reqs = PurchaseRequest.objects.all().order_by('-id')[:30] 
+    catalog = SupplierCatalog.objects.all()[:30]
+    
+    context = "CONTEXTE LOCAL ACTUEL (MAN TRUCK MAROC) :\n"
+    context += "COMMANDES RECENTS :\n"
+    for r in reqs:
+        context += f"- ID #{r.order_number}: Demandé par {r.requester.username}, Produit {r.product}, Qte {r.qty}, Statut {r.status}, Fournisseur {r.supplier or 'Non défini'}, Prix {r.price or 'TBD'}, Notes: {r.observation or 'N/A'}\n"
+    
+    context += "\nREFERENTIEL FOURNISSEURS :\n"
+    for c in catalog:
+        context += f"- Prod: {c.product_name}, Vendeur: {c.supplier_name}, Prix: {c.price}\n"
+
+    final_prompt = f"""
+Tu es 'L'Assistant Achats MAN', une Intelligence Artificielle officielle experte du marché marocain et des processus achats de MAN Truck & Bus Morocco.
+Réponds toujours en français, de manière professionnelle et claire.
+Utilise le contexte local ci-dessous pour répondre précisément. Si ça ne répond pas à la question, utilise tes connaissances pour conseiller le marché marocain en général.
+
+{context}
+"""
+
+    api_key = os.environ.get('GROQ_API_KEY')
+    if not api_key:
+         return Response({'reply': "Erreur : La clé API GROQ n'est pas configurée dans le fichier d'environnement."})
+
+    # Utilisation directe de l'API HTTP de Groq (Interface OpenAI compatible)
+    target_url = "https://api.groq.com/openai/v1/chat/completions"
+    
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json"
+    }
+    
+    payload = {
+        "model": "llama-3.3-70b-versatile", 
+        "messages": [
+            {"role": "system", "content": final_prompt},
+            {"role": "user", "content": user_message}
+        ],
+        "temperature": 0.7
+    }
+    
+    try:
+        r = requests.post(target_url, json=payload, headers=headers, timeout=20)
+        data = r.json()
+        
+        # Navigation dans le format standard OpenAI utilisé par Groq
+        if 'choices' in data and len(data['choices']) > 0:
+            ai_text = data['choices'][0]['message']['content']
+            return Response({'reply': ai_text})
+        else:
+            return Response({'reply': "Groq a retourné une réponse inattendue ou vide.", 'debug': data})
+    except Exception as e:
+        return Response({'reply': f"Une erreur technique avec Groq est survenue : {str(e)}"})

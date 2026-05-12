@@ -22,4 +22,6 @@ export const createCatalog = (data) => API.post('catalog/', data);
 export const updateCatalog = (id, data) => API.patch(`catalog/${id}/`, data);
 export const deleteCatalog = (id) => API.delete(`catalog/${id}/`);
 
+export const sendMessageToAI = (message) => API.post('chat/', { message });
+
 export default API;
