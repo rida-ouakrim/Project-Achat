@@ -1,5 +1,9 @@
 from django.contrib import admin
-from .models import Profile, PurchaseRequest, SupplierCatalog
+from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem
+
+class PurchaseItemInline(admin.TabularInline):
+    model = PurchaseItem
+    extra = 1
 
 @admin.register(Profile)
 class ProfileAdmin(admin.ModelAdmin):
@@ -8,9 +12,10 @@ class ProfileAdmin(admin.ModelAdmin):
 
 @admin.register(PurchaseRequest)
 class PurchaseRequestAdmin(admin.ModelAdmin):
-    list_display = ['order_number', 'requester', 'product', 'qty', 'status', 'date_created', 'supplier', 'price']
+    list_display = ['order_number', 'requester', 'status', 'date_created']
     list_filter = ['status', 'date_created']
-    search_fields = ['order_number', 'product', 'requester__username', 'supplier']
+    search_fields = ['order_number', 'requester__username']
+    inlines = [PurchaseItemInline]
 
 @admin.register(SupplierCatalog)
 class SupplierCatalogAdmin(admin.ModelAdmin):

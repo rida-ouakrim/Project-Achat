@@ -3,8 +3,9 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
-from .models import Profile, PurchaseRequest, SupplierCatalog
-from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCatalogSerializer
+from .models import Profile, PurchaseRequest, SupplierCatalog, SourcingHistory, QuoteComparisonHistory
+from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCatalogSerializer, SourcingHistorySerializer, QuoteComparisonHistorySerializer
+from .company_context import SEFAMAR_CONTEXT
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -72,12 +73,14 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         instance = serializer.save()
         # Automatisation : Enregistrer ou mettre à jour le catalogue fournisseur dès qu'un prix est saisi
-        if instance.supplier and instance.price:
-            SupplierCatalog.objects.update_or_create(
-                product_name=instance.product,
-                supplier_name=instance.supplier,
-                defaults={'price': instance.price}
-            )
+        # Now we check every item in the request
+        for item in instance.items.all():
+            if item.supplier and item.price:
+                SupplierCatalog.objects.update_or_create(
+                    product_name=item.product,
+                    supplier_name=item.supplier,
+                    defaults={'price': item.price}
+                )
 
 import os
 import requests
@@ -96,16 +99,21 @@ def ai_chat(request):
     context = "CONTEXTE LOCAL ACTUEL (MAN TRUCK MAROC) :\n"
     context += "COMMANDES RECENTS :\n"
     for r in reqs:
-        context += f"- ID #{r.order_number}: Demandé par {r.requester.username}, Produit {r.product}, Qte {r.qty}, Statut {r.status}, Fournisseur {r.supplier or 'Non défini'}, Prix {r.price or 'TBD'}, Notes: {r.observation or 'N/A'}\n"
+        items_str = ", ".join([f"{i.product} (Qte {i.qty}, Frn: {i.supplier or 'N/A'}, Prix: {i.price or 'N/A'})" for i in r.items.all()])
+        context += f"- ID #{r.order_number}: Demandé par {r.requester.username}, Statut {r.status}, Notes: {r.observation or 'N/A'}\n"
+        context += f"  Articles: {items_str}\n"
     
     context += "\nREFERENTIEL FOURNISSEURS :\n"
     for c in catalog:
         context += f"- Prod: {c.product_name}, Vendeur: {c.supplier_name}, Prix: {c.price}\n"
 
     final_prompt = f"""
-Tu es 'L'Assistant Achats MAN', une Intelligence Artificielle officielle experte du marché marocain et des processus achats de MAN Truck & Bus Morocco.
-Réponds toujours en français, de manière professionnelle et claire.
-Utilise le contexte local ci-dessous pour répondre précisément. Si ça ne répond pas à la question, utilise tes connaissances pour conseiller le marché marocain en général.
+Tu es 'L'Assistant Achats Officiel de SEFAMAR S.A.', une Intelligence Artificielle officielle experte du marché marocain et des véhicules industriels (distributeur exclusif MAN Truck & Bus au Maroc).
+Réponds toujours en français, de manière professionnelle, polie et claire.
+
+{SEFAMAR_CONTEXT}
+
+Utilise le contexte métier ci-dessous pour répondre précisément. Si ça ne répond pas à la question, utilise tes connaissances approfondies en logistique lourde et tes données générales sur le Maroc.
 
 {context}
 """
@@ -143,3 +151,69 @@ Utilise le contexte local ci-dessous pour répondre précisément. Si ça ne ré
             return Response({'reply': "Groq a retourné une réponse inattendue ou vide.", 'debug': data})
     except Exception as e:
         return Response({'reply': f"Une erreur technique avec Groq est survenue : {str(e)}"})
+
+from rest_framework.decorators import api_view
+from .ai_services import get_sourcing_suggestions, extract_text_from_file, compare_quotes
+
+@api_view(['POST'])
+def ai_sourcing(request):
+    product = request.data.get('product')
+    location = request.data.get('location', 'Casablanca')
+    
+    if not product:
+        return Response({'success': False, 'error': 'Le produit est requis.'}, status=400)
+        
+    result = get_sourcing_suggestions(product, location)
+    if result.get('success'):
+        # Save to history
+        try:
+            SourcingHistory.objects.create(
+                product=product,
+                location=location,
+                results=result.get('data', [])
+            )
+        except Exception as save_err:
+            print(f"Error saving sourcing history: {save_err}")
+            
+        return Response(result)
+    else:
+        return Response(result, status=500)
+
+class SourcingHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = SourcingHistory.objects.all()
+    serializer_class = SourcingHistorySerializer
+    permission_classes = [permissions.AllowAny]
+
+@api_view(['POST'])
+def ai_compare_quotes(request):
+    files = request.FILES.getlist('files')
+    if not files:
+        return Response({'success': False, 'error': 'Aucun fichier fourni.'}, status=400)
+        
+    files_data = []
+    for f in files:
+        text = extract_text_from_file(f.file, f.name)
+        files_data.append({
+            "filename": f.name,
+            "text": text
+        })
+        
+    result = compare_quotes(files_data)
+    if result.get('success'):
+        try:
+            # Enregistrer dans l'historique
+            QuoteComparisonHistory.objects.create(
+                filenames=[f.name for f in files],
+                markdown_result=result.get('markdown', '')
+            )
+        except Exception as err:
+            print(f"Failed to save comparison history: {err}")
+            
+        return Response(result)
+    else:
+        return Response(result, status=500)
+
+class QuoteComparisonHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    queryset = QuoteComparisonHistory.objects.all()
+    serializer_class = QuoteComparisonHistorySerializer
+    permission_classes = [permissions.AllowAny]

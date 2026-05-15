@@ -7,6 +7,8 @@ import RequesterDashboard from './pages/RequesterDashboard';
 import PurchasingDashboard from './pages/PurchasingDashboard';
 import DirectorDashboard from './pages/DirectorDashboard';
 import SuppliersPage from './pages/SuppliersPage';
+import SourcingDashboard from './pages/SourcingDashboard';
+import QuoteComparisonDashboard from './pages/QuoteComparisonDashboard';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
           <Route path="purchasing" element={<PurchasingDashboard />} />
           <Route path="director" element={<DirectorDashboard />} />
           <Route path="suppliers" element={<SuppliersPage />} />
+          <Route path="sourcing" element={<SourcingDashboard />} />
+          <Route path="compare-quotes" element={<QuoteComparisonDashboard />} />
         </Route>
       </Routes>
     </Router>

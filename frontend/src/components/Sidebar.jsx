@@ -84,6 +84,36 @@ const Sidebar = () => {
             </NavLink>
           </>
         )}
+
+        {(userRole === 'purchasing' || userRole === 'director') && (
+          <>
+            <div style={{ margin: '1rem 0 0.25rem 0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+              Outils IA
+            </div>
+            <NavLink to="/sourcing" style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
+              borderRadius: 'var(--radius-md)', textDecoration: 'none',
+              backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
+              color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
+              fontWeight: isActive ? 600 : 500,
+              transition: 'var(--transition)'
+            })}>
+              <span style={{ fontSize: '1.2rem' }}>🔍</span>
+              Sourcing (Recherche)
+            </NavLink>
+            <NavLink to="/compare-quotes" style={({ isActive }) => ({
+              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
+              borderRadius: 'var(--radius-md)', textDecoration: 'none',
+              backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
+              color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
+              fontWeight: isActive ? 600 : 500,
+              transition: 'var(--transition)'
+            })}>
+              <span style={{ fontSize: '1.2rem' }}>📊</span>
+              Comparaison Devis
+            </NavLink>
+          </>
+        )}
       </nav>
     </aside>
   );

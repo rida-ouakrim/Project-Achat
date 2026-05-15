@@ -14,7 +14,7 @@ const Layout = () => {
 
   // Restriction stricte des routes (Autorise le rôle courant OU la page suppliers partagée)
   const path = location.pathname.replace('/', '');
-  const allowedPaths = [userRole, 'suppliers'];
+  const allowedPaths = [userRole, 'suppliers', 'sourcing', 'compare-quotes'];
   if (path && !allowedPaths.includes(path)) {
     return <Navigate to={`/${userRole}`} replace />;
   }

@@ -15,12 +15,10 @@ const PurchasingDashboard = () => {
   const [refusalReason, setRefusalReason] = useState('');
 
   // Form states for approval/order
-  const [supplier, setSupplier] = useState('');
-  const [price, setPrice] = useState('');
+  const [itemApprovals, setItemApprovals] = useState([]);
 
   // Form states for editing
-  const [editProduct, setEditProduct] = useState('');
-  const [editQty, setEditQty] = useState('');
+  const [editItems, setEditItems] = useState([]);
   const [editObservation, setEditObservation] = useState('');
 
   // Fix: Adding missing states that were accidentally deleted!
@@ -58,8 +56,7 @@ const PurchasingDashboard = () => {
 
   const handleOpenApprove = async (req) => {
     setSelectedRequest(req);
-    setPrice('');
-    setSupplier('');
+    setItemApprovals(req.items ? req.items.map(it => ({ ...it, supplier: '', price: '' })) : []);
     setSuggestedSuppliers([]);
     setIsApproveModalOpen(true);
     
@@ -73,29 +70,36 @@ const PurchasingDashboard = () => {
   };
 
   // Remplissage auto lors de la sélection d'un fournisseur suggéré
-  const handleSelectSuggested = (e) => {
-    const selectedVal = e.target.value;
+  const handleSelectSuggested = (index, selectedVal) => {
+    const newApprovals = [...itemApprovals];
     if (selectedVal === "NEW") {
-      setSupplier('');
-      setPrice('');
+      newApprovals[index].supplier = '';
+      newApprovals[index].price = '';
     } else {
       const option = suggestedSuppliers.find(s => s.id.toString() === selectedVal);
       if (option) {
-        setSupplier(option.supplier_name);
-        // Nettoyer le prix stocké "4500 MAD" pour ne garder que le chiffre dans l'input
+        newApprovals[index].supplier = option.supplier_name;
         const numericPrice = option.price.replace(/[^0-9.]/g, '');
-        setPrice(numericPrice);
+        newApprovals[index].price = numericPrice;
       }
     }
+    setItemApprovals(newApprovals);
   };
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
     try {
+      // Validation: Ensure all items have a supplier and price
+      if (itemApprovals.some(it => !it.supplier || !it.price)) {
+        return toast.error("Veuillez renseigner le fournisseur et le prix pour tous les articles.");
+      }
+
       const payload = {
         status: 'Commandé',
-        supplier: supplier,
-        price: `${price} MAD`
+        items: itemApprovals.map(it => ({
+          ...it,
+          price: it.price.includes('MAD') ? it.price : `${it.price} MAD`
+        }))
       };
       await updateRequest(selectedRequest.id, payload);
       setIsApproveModalOpen(false);
@@ -121,8 +125,7 @@ const PurchasingDashboard = () => {
 
   const handleOpenEdit = (req) => {
     setSelectedRequest(req);
-    setEditProduct(req.product);
-    setEditQty(req.qty);
+    setEditItems(req.items ? [...req.items] : []);
     setEditObservation(req.observation || '');
     setIsEditModalOpen(true);
   };
@@ -131,8 +134,7 @@ const PurchasingDashboard = () => {
     e.preventDefault();
     try {
       const payload = {
-        product: editProduct,
-        qty: parseInt(editQty),
+        items: editItems,
         observation: editObservation
       };
       await updateRequest(selectedRequest.id, payload);
@@ -171,11 +173,22 @@ const PurchasingDashboard = () => {
     }
   };
 
-  // 1. Fonction d'impression du Bon de Commande / Reçu au format PDF A4 officiel
   const handleDownloadReceipt = (order) => {
-    // Calculer dynamiquement le prix total basé sur le prix unitaire extrait
-    const unitPriceNumeric = parseFloat(order.price.replace(/[^0-9.]/g, '')) || 0;
-    const totalPriceNumeric = unitPriceNumeric * order.qty;
+    let totalOrderAmount = 0;
+    const itemsHtml = order.items.map(it => {
+        const up = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
+        const total = up * it.qty;
+        totalOrderAmount += total;
+        return `
+          <tr>
+            <td style="font-weight: 600; color: #0f172a;">${it.product}</td>
+            <td style="font-style: italic;">${it.supplier || '-'}</td>
+            <td style="text-align: center; font-weight: 600;">${it.qty}</td>
+            <td style="text-align: right;">${up.toLocaleString('fr-FR')} MAD</td>
+            <td style="text-align: right; font-weight: 700; color: #0f172a;">${total.toLocaleString('fr-FR')} MAD</td>
+          </tr>
+        `;
+    }).join('');
     
     const printWindow = window.open('', '_blank');
     const htmlContent = `
@@ -341,17 +354,11 @@ const PurchasingDashboard = () => {
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td style="font-weight: 600; color: #0f172a;">${order.product}</td>
-                <td style="font-style: italic;">${order.supplier}</td>
-                <td style="text-align: center; font-weight: 600;">${order.qty}</td>
-                <td style="text-align: right;">${unitPriceNumeric.toLocaleString('fr-FR')} MAD</td>
-                <td style="text-align: right; font-weight: 700; color: #0f172a;">${totalPriceNumeric.toLocaleString('fr-FR')} MAD</td>
-              </tr>
+              ${itemsHtml}
               <tr class="total-row">
                 <td colspan="3" style="border: none; background: transparent;"></td>
                 <td style="text-align: right; border-top: 2px solid #0f172a;">MONTANT NET</td>
-                <td style="text-align: right; color: #e11d48; border-top: 2px solid #0f172a; font-size: 18px;">${totalPriceNumeric.toLocaleString('fr-FR')} MAD</td>
+                <td style="text-align: right; color: #e11d48; border-top: 2px solid #0f172a; font-size: 18px;">${totalOrderAmount.toLocaleString('fr-FR')} MAD</td>
               </tr>
             </tbody>
           </table>
@@ -473,8 +480,7 @@ const PurchasingDashboard = () => {
                 <tr>
                   <th>N° Commande</th>
                   <th>Demandeur</th>
-                  <th>Produit</th>
-                  <th>Qté</th>
+                  <th>Produits (Qté)</th>
                   <th>Service</th>
                   <th>Statut</th>
                   <th>Actions</th>
@@ -485,8 +491,13 @@ const PurchasingDashboard = () => {
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>{req.order_number}</td>
                     <td>{req.requester_name}</td>
-                    <td>{req.product}</td>
-                    <td>{req.qty}</td>
+                    <td>
+                      <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                        {req.items && req.items.map((it, idx) => (
+                          <li key={idx}><strong>{it.qty}x</strong> {it.product}</li>
+                        ))}
+                      </ul>
+                    </td>
                     <td>{req.assignment}</td>
                     <td>
                       <span className="badge badge-pending">
@@ -532,22 +543,43 @@ const PurchasingDashboard = () => {
                 <thead>
                   <tr>
                     <th>N° Commande</th>
-                    <th>Produit</th>
-                    <th>Fournisseur</th>
-                    <th>Prix</th>
+                    <th>Produits</th>
+                    <th>Fournisseurs</th>
+                    <th>Prix Total</th>
                     <th>Statut</th>
                     <th>Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orderTrackingRequests.map(order => (
+                  {orderTrackingRequests.map(order => {
+                    let orderTotal = 0;
+                    return (
                     <tr key={order.id}>
                       <td style={{ fontWeight: 500 }}>{order.order_number}</td>
-                      <td>{order.product}</td>
-                      <td>{order.supplier}</td>
+                      <td>
+                        <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                          {order.items && order.items.map((it, idx) => (
+                            <li key={idx}>{it.product} ({it.qty})</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td>
+                        <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem', color: '#64748b' }}>
+                          {order.items && order.items.map((it, idx) => (
+                            <li key={idx}>{it.supplier || '-'}</li>
+                          ))}
+                        </ul>
+                      </td>
                       <td style={{ fontWeight: 600 }}>
-                        <div style={{ color: '#0f172a' }}>{(parseFloat(order.price.replace(/[^0-9.]/g, '')) * order.qty).toLocaleString('fr-FR')} MAD</div>
-                        <div style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>{order.price} x {order.qty}</div>
+                        {order.items && order.items.map((it, idx) => {
+                          const up = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                          const total = up * it.qty;
+                          orderTotal += total;
+                          return (
+                            <div key={idx} style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>{it.price} x {it.qty} = {total.toLocaleString('fr-FR')}</div>
+                          );
+                        })}
+                        <div style={{ color: '#0f172a', marginTop: '4px' }}>{orderTotal.toLocaleString('fr-FR')} MAD</div>
                       </td>
                       <td>
                         <span className={`badge badge-${order.status === 'Commandé' ? 'ordered' : 'received'}`}>
@@ -582,7 +614,7 @@ const PurchasingDashboard = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                   {orderTrackingRequests.length === 0 && (
                     <tr>
                       <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
@@ -619,11 +651,15 @@ const PurchasingDashboard = () => {
               });
               if (ordersToExport.length === 0) return toast.error("Aucune commande enregistrée pour ce mois.");
               let csvContent = "data:text/csv;charset=utf-8,\uFEFF";
-              csvContent += "Numéro de Commande,Demandeur,Produit,Quantité,Fournisseur,Prix Unitaire,Montant Total,Statut,Date\n";
+              csvContent += "Numéro de Commande,Demandeur,Article,Quantité,Fournisseur,Prix Unitaire,Montant Total,Statut,Date\n";
               ordersToExport.forEach(order => {
-                const up = parseFloat(order.price.replace(/[^0-9.]/g, '')) || 0;
-                const total = up * order.qty;
-                csvContent += `"${order.order_number}","${order.requester_name}","${order.product}",${order.qty},"${order.supplier}","${order.price}","${total} MAD","${order.status}","${order.date_created}"\n`;
+                if (order.items) {
+                  order.items.forEach(it => {
+                    const up = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                    const total = up * it.qty;
+                    csvContent += `"${order.order_number}","${order.requester_name}","${it.product}",${it.qty},"${it.supplier || ''}","${it.price || ''}","${total} MAD","${order.status}","${order.date_created}"\n`;
+                  });
+                }
               });
               const encodedUri = encodeURI(csvContent);
               const link = document.createElement("a");
@@ -651,27 +687,39 @@ const PurchasingDashboard = () => {
               </button>
             </div>
             <form onSubmit={handleConfirmEdit}>
-              <div className="form-group">
-                <label className="form-label">Produit</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={editProduct} 
-                  onChange={(e) => setEditProduct(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Quantité</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  value={editQty} 
-                  onChange={(e) => setEditQty(e.target.value)}
-                  required
-                  min="1"
-                />
-              </div>
+              {editItems.map((item, index) => (
+                <div key={index} className="flex gap-4" style={{ marginBottom: '1rem' }}>
+                  <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+                    <label className="form-label" style={{ display: index === 0 ? 'block' : 'none' }}>Produit</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={item.product} 
+                      onChange={(e) => {
+                        const newItems = [...editItems];
+                        newItems[index].product = e.target.value;
+                        setEditItems(newItems);
+                      }}
+                      required
+                    />
+                  </div>
+                  <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                    <label className="form-label" style={{ display: index === 0 ? 'block' : 'none' }}>Quantité</label>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={item.qty} 
+                      onChange={(e) => {
+                        const newItems = [...editItems];
+                        newItems[index].qty = e.target.value;
+                        setEditItems(newItems);
+                      }}
+                      required
+                      min="1"
+                    />
+                  </div>
+                </div>
+              ))}
               <div className="form-group">
                 <label className="form-label">Observation</label>
                 <textarea 
@@ -702,84 +750,88 @@ const PurchasingDashboard = () => {
             </div>
             <form onSubmit={handleConfirmOrder}>
               <p className="text-sm text-muted mb-4">
-                Veuillez renseigner le fournisseur et le prix négocié pour finaliser la commande de : <strong>{selectedRequest?.product}</strong> (Qté : {selectedRequest?.qty}).
+                Veuillez renseigner le fournisseur et le prix négocié pour chaque article de la commande.
               </p>
-              
-              {suggestedSuppliers.length > 0 && (
-                <div className="form-group" style={{ backgroundColor: '#f0fdf4', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #dcfce7', marginBottom: '1.5rem' }}>
-                  <label className="form-label" style={{ color: '#166534', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Tag size={16} /> Référentiel Fournisseurs Global
-                  </label>
-                  <select className="form-input" style={{ borderColor: '#86efac' }} onChange={handleSelectSuggested}>
-                    <option value="NEW">-- Utiliser un nouveau fournisseur --</option>
-                    
-                    {/* 1. Exact Matches first */}
-                    {suggestedSuppliers.some(s => s.product_name.toLowerCase().includes(selectedRequest.product.toLowerCase())) && (
-                      <optgroup label="✨ Correspondances directes pour ce produit">
-                        {suggestedSuppliers
-                          .filter(s => s.product_name.toLowerCase().includes(selectedRequest.product.toLowerCase()))
-                          .map(s => (
-                            <option key={s.id} value={s.id}>{s.supplier_name} ({s.price})</option>
-                          ))
-                        }
-                      </optgroup>
-                    )}
 
-                    {/* 2. All other suppliers in catalog */}
-                    <optgroup label="📚 Tous les autres fournisseurs du catalogue">
-                      {suggestedSuppliers
-                        .filter(s => !s.product_name.toLowerCase().includes(selectedRequest.product.toLowerCase()))
-                        .map(s => (
-                          <option key={s.id} value={s.id}>{s.supplier_name} ({s.product_name} - {s.price})</option>
-                        ))
-                      }
-                    </optgroup>
-                  </select>
-                  <small style={{ color: '#15803d', marginTop: '0.5rem', display: 'block' }}>💡 Sélectionner une option remplit automatiquement le nom et le prix de référence !</small>
-                </div>
-              )}
-              
-              <div className="form-group">
-                <label className="form-label">Nom du Fournisseur</label>
-                <input 
-                  type="text"
-                  className="form-input" 
-                  placeholder="Saisir ou modifier le nom..." 
-                  value={supplier} 
-                  onChange={(e) => setSupplier(e.target.value)}
-                  required
-                />
-              </div>
+              {itemApprovals.map((item, index) => (
+                <div key={item.id} style={{ backgroundColor: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1rem', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#0f172a' }}>{item.product} (Qté : {item.qty})</h4>
+                  
+                  {suggestedSuppliers.length > 0 && (
+                    <div className="form-group" style={{ backgroundColor: '#f0fdf4', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid #dcfce7', marginBottom: '1rem' }}>
+                      <label className="form-label" style={{ color: '#166534', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <Tag size={16} /> Référentiel Fournisseurs Global
+                      </label>
+                      <select className="form-input" style={{ borderColor: '#86efac' }} onChange={(e) => handleSelectSuggested(index, e.target.value)}>
+                        <option value="NEW">-- Saisir manuellement le fournisseur --</option>
+                        
+                        {suggestedSuppliers.some(s => s.product_name.toLowerCase().includes(item.product.toLowerCase())) && (
+                          <optgroup label="✨ Correspondances directes pour ce produit">
+                            {suggestedSuppliers
+                              .filter(s => s.product_name.toLowerCase().includes(item.product.toLowerCase()))
+                              .map(s => (
+                                <option key={s.id} value={s.id}>{s.supplier_name} ({s.price})</option>
+                              ))
+                            }
+                          </optgroup>
+                        )}
 
-              <div className="form-group">
-                <label className="form-label">Prix Unitaire (en MAD)</label>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  placeholder="Saisir le prix par unité..." 
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  required
-                  min="0.1"
-                  step="any"
-                />
-              </div>
+                        <optgroup label="📚 Tous les autres fournisseurs du catalogue">
+                          {suggestedSuppliers
+                            .filter(s => !s.product_name.toLowerCase().includes(item.product.toLowerCase()))
+                            .map(s => (
+                              <option key={s.id} value={s.id}>{s.supplier_name} ({s.product_name} - {s.price})</option>
+                            ))
+                          }
+                        </optgroup>
+                      </select>
+                      <small style={{ color: '#15803d', marginTop: '0.5rem', display: 'block' }}>💡 Sélectionner une option remplit automatiquement les champs ci-dessous !</small>
+                    </div>
+                  )}
 
-              {/* Calcul dynamique du montant total à la volée */}
-              {price && selectedRequest && (
-                <div style={{ 
-                  padding: '1rem', 
-                  backgroundColor: 'var(--color-bg)', 
-                  borderRadius: 'var(--radius-md)', 
-                  marginTop: '1rem',
-                  borderLeft: '4px solid var(--color-primary)'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Calcul Montant Total ({selectedRequest.qty} unités x {price}) :</span>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#e11d48' }}>{(parseFloat(price) * selectedRequest.qty).toLocaleString('fr-FR')} MAD</span>
+                  <div className="flex gap-4">
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Fournisseur</label>
+                      <input 
+                        type="text"
+                        className="form-input" 
+                        placeholder="Ex: AutoParts SARL" 
+                        value={item.supplier} 
+                        onChange={(e) => {
+                          const newApp = [...itemApprovals];
+                          newApp[index].supplier = e.target.value;
+                          setItemApprovals(newApp);
+                        }}
+                        required
+                      />
+                    </div>
+
+                    <div className="form-group" style={{ flex: 1 }}>
+                      <label className="form-label">Prix Unitaire (MAD)</label>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        placeholder="Ex: 450" 
+                        value={item.price}
+                        onChange={(e) => {
+                          const newApp = [...itemApprovals];
+                          newApp[index].price = e.target.value;
+                          setItemApprovals(newApp);
+                        }}
+                        required
+                        min="0.1"
+                        step="any"
+                      />
+                    </div>
                   </div>
+                  
+                  {item.price && (
+                    <div style={{ textAlign: 'right', fontSize: '0.875rem', color: '#64748b' }}>
+                      Total pour cet article : <strong style={{ color: '#e11d48' }}>{(parseFloat(item.price) * item.qty).toLocaleString('fr-FR')} MAD</strong>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
 
               <div className="flex justify-end gap-2 mt-4">
                 <button type="button" className="btn btn-outline" onClick={() => setIsApproveModalOpen(false)}>Annuler</button>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, AlertCircle, RefreshCw } from 'lucide-react';
+import { Send, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, createRequest } from '../api';
 
@@ -11,10 +11,10 @@ const RequesterDashboard = () => {
 
   const [formData, setFormData] = useState({
     assignment: '',
-    qty: '',
-    product: '',
     observation: ''
   });
+  
+  const [items, setItems] = useState([{ product: '', qty: '' }]);
 
   const userId = localStorage.getItem('userId');
   const userName = localStorage.getItem('userName');
@@ -38,10 +38,28 @@ const RequesterDashboard = () => {
     loadRequests();
   }, []);
 
+  const handleItemChange = (index, e) => {
+    const newItems = [...items];
+    newItems[index][e.target.name] = e.target.value;
+    setItems(newItems);
+  };
+
+  const addItem = () => setItems([...items, { product: '', qty: '' }]);
+  const removeItem = (index) => {
+    if (items.length > 1) {
+      setItems(items.filter((_, i) => i !== index));
+    }
+  };
+
   const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (items.some(item => !item.product.trim() || !item.qty)) {
+      toast.error("Veuillez remplir tous les produits et quantités.");
+      return;
+    }
+    
     setSubmitting(true);
     setError('');
 
@@ -49,14 +67,17 @@ const RequesterDashboard = () => {
       const payload = {
         requester: parseInt(userId),
         assignment: formData.assignment,
-        product: formData.product,
-        qty: parseInt(formData.qty),
         observation: formData.observation,
-        status: 'En attente'
+        status: 'En attente',
+        items: items.map(item => ({
+          product: item.product,
+          qty: parseInt(item.qty)
+        }))
       };
 
       await createRequest(payload);
-      setFormData({ assignment: '', qty: '', product: '', observation: '' });
+      setFormData({ assignment: '', observation: '' });
+      setItems([{ product: '', qty: '' }]);
       // Recharger les demandes pour afficher la nouvelle
       await loadRequests();
       toast.success('Votre demande a été créée et transmise avec succès !');
@@ -109,33 +130,7 @@ const RequesterDashboard = () => {
           </div>
 
           <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
-            <div className="form-group" style={{ flex: 2 }}>
-              <label className="form-label">Nom du produit</label>
-              <input 
-                type="text" 
-                name="product" 
-                value={formData.product} 
-                onChange={handleChange} 
-                className="form-input" 
-                required 
-                placeholder="Ex: Filtre à air"
-                disabled={submitting}
-              />
-            </div>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Quantité</label>
-              <input 
-                type="number" 
-                name="qty" 
-                value={formData.qty} 
-                onChange={handleChange} 
-                className="form-input" 
-                required 
-                min="1"
-                disabled={submitting}
-              />
-            </div>
-            <div className="form-group" style={{ flex: 2 }}>
               <label className="form-label">Affectation (Service/Camion)</label>
               <input 
                 type="text" 
@@ -148,6 +143,50 @@ const RequesterDashboard = () => {
                 disabled={submitting}
               />
             </div>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--color-bg)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: '1px solid #e2e8f0' }}>
+            <div className="flex justify-between items-center mb-4">
+              <label className="form-label" style={{ marginBottom: 0 }}>Articles demandés</label>
+              <button type="button" className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem' }} onClick={addItem} disabled={submitting}>
+                <Plus size={14} /> Ajouter un article
+              </button>
+            </div>
+            
+            {items.map((item, index) => (
+              <div key={index} className="flex gap-4 items-start" style={{ marginBottom: index === items.length - 1 ? '0' : '1rem' }}>
+                <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+                  <input 
+                    type="text" 
+                    name="product" 
+                    value={item.product} 
+                    onChange={(e) => handleItemChange(index, e)} 
+                    className="form-input" 
+                    required 
+                    placeholder="Nom du produit (Ex: Filtre à air)"
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="form-group" style={{ width: '120px', marginBottom: 0 }}>
+                  <input 
+                    type="number" 
+                    name="qty" 
+                    value={item.qty} 
+                    onChange={(e) => handleItemChange(index, e)} 
+                    className="form-input" 
+                    required 
+                    min="1"
+                    placeholder="Qté"
+                    disabled={submitting}
+                  />
+                </div>
+                {items.length > 1 && (
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.6rem', color: '#ef4444', borderColor: '#fee2e2' }} onClick={() => removeItem(index)} disabled={submitting} title="Supprimer cet article">
+                    <Trash2 size={16} />
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
 
           <div className="form-group">
@@ -186,8 +225,8 @@ const RequesterDashboard = () => {
               <thead>
                 <tr>
                   <th>N° Commande</th>
-                  <th>Produit</th>
-                  <th>Quantité</th>
+                  <th>Articles</th>
+                  <th>Affectation</th>
                   <th>Date</th>
                   <th>Statut</th>
                 </tr>
@@ -196,8 +235,14 @@ const RequesterDashboard = () => {
                 {requests.map(req => (
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>{req.order_number}</td>
-                    <td>{req.product}</td>
-                    <td>{req.qty}</td>
+                    <td>
+                      <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                        {req.items && req.items.map((it, idx) => (
+                          <li key={idx}><strong>{it.qty}x</strong> {it.product}</li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td>{req.assignment}</td>
                     <td>{req.date_created}</td>
                     <td>
                       <span className={`badge badge-${

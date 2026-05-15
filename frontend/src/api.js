@@ -24,4 +24,7 @@ export const deleteCatalog = (id) => API.delete(`catalog/${id}/`);
 
 export const sendMessageToAI = (message) => API.post('chat/', { message });
 
+export const fetchSourcingHistory = () => API.get('sourcing-history/');
+export const fetchQuoteComparisonHistory = () => API.get('quote-comparison-history/');
+
 export default API;

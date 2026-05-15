@@ -289,18 +289,30 @@ const DirectorDashboard = () => {
                         <td style={{ fontWeight: 500 }}>{order.order_number}</td>
                         <td style={{ fontSize: '0.8125rem' }}>{order.requester_name}</td>
                         <td>
-                          <div style={{ fontWeight: 500 }}>{order.product}</div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Qté: {order.qty}</div>
+                          <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                            {order.items && order.items.map((it, idx) => (
+                              <li key={idx}>
+                                <div style={{ fontWeight: 500 }}>{it.product}</div>
+                                <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>Qté: {it.qty}</div>
+                              </li>
+                            ))}
+                          </ul>
                         </td>
                         <td>
-                          {order.price ? (
-                            <div>
-                              <div style={{ fontWeight: 600 }}>{order.price}</div>
-                              <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{order.supplier}</div>
-                            </div>
-                          ) : (
-                            <span style={{ fontStyle: 'italic', color: '#cbd5e1', fontSize: '0.75rem' }}>Non renseigné</span>
-                          )}
+                          <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                            {order.items && order.items.map((it, idx) => (
+                              <li key={idx}>
+                                {it.price ? (
+                                  <div>
+                                    <div style={{ fontWeight: 600 }}>{it.price}</div>
+                                    <div style={{ fontSize: '0.7rem', color: 'var(--color-text-muted)' }}>{it.supplier}</div>
+                                  </div>
+                                ) : (
+                                  <span style={{ fontStyle: 'italic', color: '#cbd5e1', fontSize: '0.75rem' }}>Non renseigné</span>
+                                )}
+                              </li>
+                            ))}
+                          </ul>
                         </td>
                         <td>
                           <span className={`badge badge-${
