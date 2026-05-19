@@ -162,9 +162,19 @@ def compare_quotes(files_data):
         Ne perds pas de jetons à rédiger des descriptions individuelles ou des listes de détails pour chaque produit/devis séparément.
         
         Va DIRECTEMENT à l'essentiel en structurant ton rapport exclusivement ainsi :
-        1. ## 📊 Tableau Comparatif Synthétique (Génère directement un grand tableau Markdown clair pour confronter toutes les offres : Caractéristiques, Prix unitaire MAD, Garantie, Connectivité, Points Forts, Points Faibles, et Observations pour SEFAMAR).
-        2. ## 💡 Recommandation Stratégique Justifiée (Explique clairement quelle offre est la plus avantageuse pour SEFAMAR S.A., son réseau national, ses ateliers et ses contraintes).
-        3. ## ⚠️ Points de Vigilance et Risques (Signale les garanties manquantes, les délais de livraison, la connectivité réseau wifi/ethernet manquante ou toute autre anomalie commerciale).
+        1. ## 📊 Tableau Comparatif Synthétique
+        Génère directement un tableau Markdown compact à 4 colonnes :
+        `| Caractéristique | HP M236dw LaserJet (9YF95A) | HP LaserJet M236d (9YF94A) | Observations pour SEFAMAR S.A. |`
+        **CONSIGNE DE CONCISION INTERDITE DE DÉPASSER :** Écris au maximum 12 mots par cellule dans le tableau pour qu'il soit ultra-lisible, propre et rapide à générer.
+        
+        2. ## 🔍 Forces & Faiblesses des Offres
+        Détaille ici sous forme de puces claires les points forts et points faibles de chaque imprimante.
+        
+        3. ## 💡 Recommandation Stratégique Justifiée
+        Explique clairement quelle offre est la plus avantageuse pour SEFAMAR S.A., son réseau national, ses ateliers et ses contraintes.
+        
+        4. ## ⚠️ Points de Vigilance et Risques
+        Signale sous forme de liste à puces les garanties manquantes, les délais de livraison, la connectivité réseau wifi/ethernet manquante ou toute autre anomalie commerciale.
         """
         
         response = model.generate_content(

@@ -294,12 +294,13 @@ const QuoteComparisonDashboard = () => {
           line-height: 1.7;
         }
         .markdown-container table {
+          display: block;
           width: 100%;
+          overflow-x: auto;
           border-collapse: collapse;
           margin: 1.5rem 0;
           font-size: 0.875rem;
           border-radius: 8px;
-          overflow: hidden;
           border: 1px solid #e2e8f0;
           box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
         }
