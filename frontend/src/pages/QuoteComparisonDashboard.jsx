@@ -28,10 +28,10 @@ const QuoteComparisonDashboard = () => {
       progressIntervalRef.current = setInterval(() => {
         setProgress((prevProgress) => {
           if (prevProgress >= 98) return 98;
-          
+
           const diff = 100 - prevProgress;
           // Slower rate than sourcing since OCR takes chunk steps
-          const step = Math.max(1, Math.floor(diff * 0.05)); 
+          const step = Math.max(1, Math.floor(diff * 0.05));
           return prevProgress + step;
         });
       }, 1500); // Tick every 1.5 seconds
@@ -93,7 +93,7 @@ const QuoteComparisonDashboard = () => {
         resolve(file);
         return;
       }
-      
+
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = (event) => {
@@ -103,11 +103,11 @@ const QuoteComparisonDashboard = () => {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          
+
           // Limites pour conserver la lisibilité du texte tout en allégeant le fichier
           const MAX_WIDTH = 2000;
           const MAX_HEIGHT = 2000;
-          
+
           if (width > height) {
             if (width > MAX_WIDTH) {
               height *= MAX_WIDTH / width;
@@ -119,13 +119,13 @@ const QuoteComparisonDashboard = () => {
               height = MAX_HEIGHT;
             }
           }
-          
+
           canvas.width = width;
           canvas.height = height;
-          
+
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
-          
+
           canvas.toBlob((blob) => {
             if (!blob) {
               resolve(file);
@@ -143,22 +143,22 @@ const QuoteComparisonDashboard = () => {
   };
 
   const addFiles = async (newFiles) => {
-    const validFiles = newFiles.filter(f => 
-      f.type === 'application/pdf' || 
+    const validFiles = newFiles.filter(f =>
+      f.type === 'application/pdf' ||
       f.type.startsWith('image/')
     );
-    
+
     if (validFiles.length !== newFiles.length) {
       toast.error("Certains fichiers ont été ignorés (uniquement PDF, JPG, PNG).");
     }
-    
+
     // Notification de traitement si des fichiers sont lourds
     const hasHeavyFiles = validFiles.some(f => f.size > 1024 * 1024 && f.type.startsWith('image/'));
     let toastId = null;
     if (hasHeavyFiles) {
       toastId = toast.loading("Optimisation et compression des images lourdes...");
     }
-    
+
     try {
       const processedFiles = await Promise.all(
         validFiles.map(async (file) => {
@@ -199,7 +199,7 @@ const QuoteComparisonDashboard = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
         timeout: 180000 // 3 minutes
       });
-      
+
       if (response.data.success) {
         setResult(response.data.markdown);
         toast.success("Comparaison terminée avec succès !");
@@ -366,7 +366,7 @@ const QuoteComparisonDashboard = () => {
 
       {/* Navigation Tabs */}
       <div className="flex border-b mb-6" style={{ borderColor: '#e2e8f0' }}>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'new' ? 'active' : ''}`}
           onClick={() => setActiveTab('new')}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -374,7 +374,7 @@ const QuoteComparisonDashboard = () => {
           <UploadCloud size={18} />
           Nouvelle Analyse
         </button>
-        <button 
+        <button
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => setActiveTab('history')}
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
@@ -385,18 +385,18 @@ const QuoteComparisonDashboard = () => {
       </div>
 
       <div className="grid-responsive">
-        
+
         {/* COLONNE DE GAUCHE (DYNAMIQUE SELON L'ONGLET) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {activeTab === 'new' ? (
             <>
               {/* COMPONENT: UPLOAD BOX */}
               <div className="card" style={{ marginBottom: 0 }}>
                 <h3 className="mb-4">1. Ajouter les devis</h3>
-                
-                <div 
-                  onDragOver={handleDragOver} 
+
+                <div
+                  onDragOver={handleDragOver}
                   onDrop={handleDrop}
                   style={{
                     border: '2px dashed var(--color-primary-light, #bfdbfe)',
@@ -412,11 +412,11 @@ const QuoteComparisonDashboard = () => {
                   <UploadCloud size={32} color="var(--color-primary)" style={{ margin: '0 auto 1rem auto', color: '#2563eb' }} />
                   <p style={{ fontWeight: 500, color: '#334155', marginBottom: '0.5rem' }}>Glissez-déposez vos fichiers ici</p>
                   <p style={{ fontSize: '0.75rem', color: '#64748b' }}>Supporte: PDF, JPG, PNG</p>
-                  <input 
-                    id="file-upload" 
-                    type="file" 
-                    multiple 
-                    accept=".pdf, image/*" 
+                  <input
+                    id="file-upload"
+                    type="file"
+                    multiple
+                    accept=".pdf, image/*"
                     onChange={handleFileSelect}
                     style={{ display: 'none' }}
                   />
@@ -441,8 +441,8 @@ const QuoteComparisonDashboard = () => {
                   </div>
                 )}
 
-                <button 
-                  className="btn btn-primary w-full mt-6" 
+                <button
+                  className="btn btn-primary w-full mt-6"
                   onClick={handleCompare}
                   disabled={files.length < 2 || loading}
                   style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
@@ -451,7 +451,7 @@ const QuoteComparisonDashboard = () => {
                   {loading ? 'Analyse en cours...' : 'Lancer la Comparaison'}
                 </button>
               </div>
-              
+
               <div className="card" style={{ backgroundColor: '#fffbeb', borderColor: '#fef3c7', marginBottom: 0 }}>
                 <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#b45309', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
                   <AlertTriangle size={16} /> Note Importante
@@ -465,7 +465,7 @@ const QuoteComparisonDashboard = () => {
             /* COMPONENT: HISTORY SELECTOR */
             <div className="card" style={{ marginBottom: 0, display: 'flex', flexDirection: 'column', gap: '1rem', minHeight: '450px' }}>
               <h3 style={{ marginBottom: '0.5rem' }}>Analyses Récentes</h3>
-              
+
               {loadingHistory ? (
                 <div style={{ textAlign: 'center', padding: '2rem', color: '#64748b' }}>
                   <Loader2 size={28} className="animate-spin mx-auto mb-2" style={{ color: '#2563eb' }} />
@@ -481,8 +481,8 @@ const QuoteComparisonDashboard = () => {
                   {historyList.map((item) => {
                     const isSelected = selectedHistoryItem?.id === item.id;
                     return (
-                      <div 
-                        key={item.id} 
+                      <div
+                        key={item.id}
                         className={`history-card-item ${isSelected ? 'selected' : ''}`}
                         onClick={() => setSelectedHistoryItem(item)}
                       >
@@ -520,7 +520,7 @@ const QuoteComparisonDashboard = () => {
           <h3 className="mb-4" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '0.75rem' }}>
             {activeTab === 'new' ? "Résultat de l'Analyse Actuelle" : "Lecture de l'Historique"}
           </h3>
-          
+
           {activeTab === 'new' ? (
             /* Render search result */
             loading ? (
@@ -556,12 +556,12 @@ const QuoteComparisonDashboard = () => {
                       borderRadius: '9999px'
                     }}></div>
                   </div>
-                  
+
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.75rem', fontWeight: 500 }}>
-                    {progress < 25 ? "Chargement des documents sur le serveur..." : 
-                     progress < 55 ? "Extraction des données textuelles et financières..." : 
-                     progress < 85 ? "Génération du tableau comparatif intelligent..." : 
-                     "Finalisation du rapport comparatif..."}
+                    {progress < 25 ? "Chargement des documents sur le serveur..." :
+                      progress < 55 ? "Extraction des données textuelles et financières..." :
+                        progress < 85 ? "Génération du tableau comparatif intelligent..." :
+                          "Finalisation du rapport comparatif..."}
                   </div>
                 </div>
 
@@ -626,7 +626,7 @@ const QuoteComparisonDashboard = () => {
             )
           )}
         </div>
-        
+
       </div>
     </div>
   );

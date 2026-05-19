@@ -115,28 +115,22 @@ def extract_text_from_file(file_obj, filename):
             # Mais pour simplifier, on s'attend à des PDF numériques ou on compte sur pdfplumber.
         elif ext in ['png', 'jpg', 'jpeg']:
             try:
-                # Essayer d'abord Tesseract (si configuré localement ou sur le serveur)
-                image = Image.open(file_obj)
-                text = pytesseract.image_to_string(image, lang='fra')
-            except Exception as tesseract_err:
-                print(f"Tesseract non disponible ou en échec, passage à Gemini Multimodal pour {filename}: {tesseract_err}")
-                try:
-                    # Rembobiner le fichier pour le lire à partir du début
-                    file_obj.seek(0)
-                    file_bytes = file_obj.read()
-                    
-                    from vertexai.generative_models import Part
-                    mime_type = "image/png" if ext == "png" else "image/jpeg"
-                    image_part = Part.from_data(data=file_bytes, mime_type=mime_type)
-                    
-                    # Gemini 2.5 Flash lit directement les images avec une précision extrême
-                    model = GenerativeModel("gemini-2.5-flash")
-                    prompt = "Extrais tout le texte et les chiffres de cette image de devis ou fiche technique de manière exhaustive et très précise."
-                    response = model.generate_content([prompt, image_part])
-                    text = response.text
-                except Exception as gemini_err:
-                    print(f"Échec critique du fallback Gemini pour {filename}: {gemini_err}")
-                    text = f"[Erreur de lecture du fichier {filename}]"
+                # Rembobiner le fichier pour le lire à partir du début
+                file_obj.seek(0)
+                file_bytes = file_obj.read()
+                
+                from vertexai.generative_models import Part
+                mime_type = "image/png" if ext == "png" else "image/jpeg"
+                image_part = Part.from_data(data=file_bytes, mime_type=mime_type)
+                
+                # Gemini 2.5 Flash lit directement les images avec une précision extrême et sans perte de structure
+                model = GenerativeModel("gemini-2.5-flash")
+                prompt = "Extrais tout le texte, les prix, les modèles, les garanties, et les spécifications détaillées de cette image de devis de manière exhaustive, structurée et très précise."
+                response = model.generate_content([prompt, image_part])
+                text = response.text
+            except Exception as gemini_err:
+                print(f"Échec de l'extraction Gemini Multimodal pour {filename}: {gemini_err}")
+                text = f"[Erreur de lecture du fichier {filename}]"
     except Exception as e:
         print(f"Erreur d'extraction générale pour {filename}: {e}")
         text = f"[Erreur de lecture du fichier {filename}]"
