@@ -3,6 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Profile, PurchaseRequest, SupplierCatalog, SourcingHistory, QuoteComparisonHistory
 from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCatalogSerializer, SourcingHistorySerializer, QuoteComparisonHistorySerializer
 from .company_context import SEFAMAR_CONTEXT
@@ -48,8 +49,22 @@ class UserViewSet(viewsets.ModelViewSet):
         
         user = authenticate(username=username, password=password)
         if user is not None:
+            # Générer les jetons JWT SimpleJWT
+            refresh = RefreshToken.for_user(user)
             serializer = self.get_serializer(user)
-            return Response(serializer.data)
+            
+            # Récupérer le rôle à partir du profil associé
+            try:
+                role = user.profile.role
+            except Exception:
+                role = 'requester' # Rôle par défaut si profil manquant
+                
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': serializer.data,
+                'role': role
+            })
         return Response({'error': "Identifiants invalides."}, status=status.HTTP_401_UNAUTHORIZED)
 
 class SupplierCatalogViewSet(viewsets.ModelViewSet):

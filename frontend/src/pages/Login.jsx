@@ -16,19 +16,22 @@ const Login = () => {
     setLoading(true);
 
     try {
-      // Tentative de connexion via le backend sécurisé Django
+      // Tentative de connexion via le backend sécurisé Django avec JWT
       const response = await loginUser(username.trim(), password);
-      const user = response.data;
-
-      if (user) {
-        const role = user.profile ? user.profile.role : 'requester';
+      const data = response.data;
+      
+      if (data && data.access) {
+        const user = data.user;
+        const role = data.role;
         
-        // Sauvegarder les informations réelles en session local
+        // Sauvegarder les jetons de sécurité JWT et les informations de session
+        localStorage.setItem('accessToken', data.access);
+        localStorage.setItem('refreshToken', data.refresh);
         localStorage.setItem('userId', user.id);
         localStorage.setItem('userRole', role);
         localStorage.setItem('userName', user.username);
         
-        // Redirection
+        // Redirection vers le tableau de bord autorisé
         if (role === 'requester') navigate('/requester');
         else if (role === 'purchasing') navigate('/purchasing');
         else if (role === 'director') navigate('/director');

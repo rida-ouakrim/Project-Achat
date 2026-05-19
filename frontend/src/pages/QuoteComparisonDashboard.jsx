@@ -86,7 +86,63 @@ const QuoteComparisonDashboard = () => {
     addFiles(selectedFiles);
   };
 
-  const addFiles = (newFiles) => {
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      // Si l'image fait moins de 1 Mo, on ne la compresse pas
+      if (file.size < 1024 * 1024) {
+        resolve(file);
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Limites pour conserver la lisibilité du texte tout en allégeant le fichier
+          const MAX_WIDTH = 2000;
+          const MAX_HEIGHT = 2000;
+          
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: 'image/jpeg',
+              lastModified: Date.now()
+            });
+            resolve(compressedFile);
+          }, 'image/jpeg', 0.85); // 0.85 conserve le texte net tout en réduisant le poids de 90%
+        };
+      };
+    });
+  };
+
+  const addFiles = async (newFiles) => {
     const validFiles = newFiles.filter(f => 
       f.type === 'application/pdf' || 
       f.type.startsWith('image/')
@@ -96,7 +152,29 @@ const QuoteComparisonDashboard = () => {
       toast.error("Certains fichiers ont été ignorés (uniquement PDF, JPG, PNG).");
     }
     
-    setFiles(prev => [...prev, ...validFiles]);
+    // Notification de traitement si des fichiers sont lourds
+    const hasHeavyFiles = validFiles.some(f => f.size > 1024 * 1024 && f.type.startsWith('image/'));
+    let toastId = null;
+    if (hasHeavyFiles) {
+      toastId = toast.loading("Optimisation et compression des images lourdes...");
+    }
+    
+    try {
+      const processedFiles = await Promise.all(
+        validFiles.map(async (file) => {
+          if (file.type.startsWith('image/')) {
+            return await compressImage(file);
+          }
+          return file;
+        })
+      );
+      setFiles(prev => [...prev, ...processedFiles]);
+      if (toastId) toast.dismiss(toastId);
+    } catch (err) {
+      console.error("Compression error:", err);
+      setFiles(prev => [...prev, ...validFiles]);
+      if (toastId) toast.dismiss(toastId);
+    }
   };
 
   const removeFile = (index) => {
@@ -190,6 +268,91 @@ const QuoteComparisonDashboard = () => {
           border-color: #2563eb;
           background-color: #eff6ff;
         }
+        
+        /* Styles de rendu Premium pour le rapport comparatif Markdown */
+        .markdown-container {
+          padding: 1.5rem;
+          background-color: white;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        .markdown-container h1, .markdown-container h2, .markdown-container h3 {
+          color: #0f172a;
+          font-weight: 700;
+          margin-top: 1.75rem;
+          margin-bottom: 0.75rem;
+        }
+        .markdown-container h2 {
+          border-bottom: 2px solid #f1f5f9;
+          padding-bottom: 0.5rem;
+          font-size: 1.35rem;
+        }
+        .markdown-container p {
+          margin-bottom: 1rem;
+          color: #475569;
+          line-height: 1.7;
+        }
+        .markdown-container table {
+          width: 100%;
+          border-collapse: collapse;
+          margin: 1.5rem 0;
+          font-size: 0.875rem;
+          border-radius: 8px;
+          overflow: hidden;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .markdown-container th {
+          background-color: #1e293b;
+          color: white;
+          text-align: left;
+          font-weight: 600;
+          padding: 0.875rem 1rem;
+          border-bottom: 2px solid #cbd5e1;
+        }
+        .markdown-container td {
+          padding: 0.875rem 1rem;
+          border-bottom: 1px solid #f1f5f9;
+          background-color: white;
+          color: #334155;
+        }
+        .markdown-container tr:last-child td {
+          border-bottom: none;
+        }
+        .markdown-container tr:nth-child(even) td {
+          background-color: #f8fafc;
+        }
+        .markdown-container ul, .markdown-container ol {
+          margin-left: 1.5rem;
+          margin-bottom: 1.25rem;
+          color: #475569;
+        }
+        .markdown-container li {
+          margin-bottom: 0.35rem;
+          line-height: 1.6;
+        }
+        .markdown-container blockquote {
+          border-left: 4px solid #3b82f6;
+          background-color: #f0f7ff;
+          padding: 1rem 1.25rem;
+          margin: 1.5rem 0;
+          border-radius: 0 8px 8px 0;
+          color: #1e40af;
+          font-weight: 500;
+        }
+        
+        /* Grille adaptative Premium pour terminaux mobiles */
+        .grid-responsive {
+          display: grid !important;
+          grid-template-columns: 1fr 2fr !important;
+          gap: 1.5rem;
+        }
+        @media (max-width: 1024px) {
+          .grid-responsive {
+            grid-template-columns: 1fr !important;
+          }
+        }
       `}</style>
 
       <div className="flex justify-between items-center mb-6">
@@ -197,7 +360,7 @@ const QuoteComparisonDashboard = () => {
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <span style={{ fontSize: '1.5rem' }}>📊</span> Comparaison de Devis IA
           </h2>
-          <p className="text-sm text-muted" style={{ margin: '4px 0 0 0' }}>Extraction automatique via OCR (Tesseract) et analyse comparative intelligente avec Gemini.</p>
+          <p className="text-sm text-muted" style={{ margin: '4px 0 0 0' }}>Extraction automatique et analyse comparative intelligente de devis multiples.</p>
         </div>
       </div>
 
@@ -221,7 +384,7 @@ const QuoteComparisonDashboard = () => {
         </button>
       </div>
 
-      <div className="grid-responsive" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+      <div className="grid-responsive">
         
         {/* COLONNE DE GAUCHE (DYNAMIQUE SELON L'ONGLET) */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -294,7 +457,7 @@ const QuoteComparisonDashboard = () => {
                   <AlertTriangle size={16} /> Note Importante
                 </h4>
                 <p style={{ fontSize: '0.75rem', color: '#92400e', margin: 0, lineHeight: '1.4' }}>
-                  Ce processus extrait le texte via **Tesseract OCR** puis génère un tableau comparatif structuré en markdown. L'analyse se sauvegardera automatiquement dans votre historique dès qu'elle aura abouti.
+                  Ce processus extrait les informations clés de vos documents de devis pour générer un tableau comparatif structuré. L'analyse se sauvegardera automatiquement dans votre historique.
                 </p>
               </div>
             </>
@@ -376,10 +539,9 @@ const QuoteComparisonDashboard = () => {
                       />
                     </svg>
                   </div>
-                  
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e3a8a', margin: '0 0 0.5rem 0' }}>Extraction & Comparaison en cours...</h3>
+                  <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e3a8a', margin: '0 0 0.5rem 0' }}>Analyse & Comparaison en cours...</h3>
                   <p style={{ color: '#3b82f6', maxWidth: '500px', fontSize: '0.875rem', margin: '0 auto 1rem auto' }}>
-                    Lecture et OCRisation en tâche de fond de <strong>{files.length} document{files.length > 1 ? 's' : ''}</strong>.
+                    Lecture et analyse automatique de <strong>{files.length} document{files.length > 1 ? 's' : ''}</strong>.
                   </p>
 
                   {/* Linear Percentage Bar */}
@@ -397,9 +559,9 @@ const QuoteComparisonDashboard = () => {
                   
                   <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.75rem', fontWeight: 500 }}>
                     {progress < 25 ? "Chargement des documents sur le serveur..." : 
-                     progress < 55 ? "Analyse Tesseract OCR (Extraction de textes)..." : 
-                     progress < 85 ? "Modélisation comparative IA par Gemini..." : 
-                     "Mise en forme finale du tableau Markdown..."}
+                     progress < 55 ? "Extraction des données textuelles et financières..." : 
+                     progress < 85 ? "Génération du tableau comparatif intelligent..." : 
+                     "Finalisation du rapport comparatif..."}
                   </div>
                 </div>
 

@@ -12,9 +12,16 @@ const Layout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  // Restriction stricte des routes (Autorise le rôle courant OU la page suppliers partagée)
+  // Restriction stricte des routes par rôle (RBAC)
   const path = location.pathname.replace('/', '');
-  const allowedPaths = [userRole, 'suppliers', 'sourcing', 'compare-quotes'];
+  
+  const roleRouteMap = {
+    requester: ['requester'],
+    purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
+    director: ['director', 'suppliers', 'sourcing', 'compare-quotes']
+  };
+
+  const allowedPaths = roleRouteMap[userRole] || [];
   if (path && !allowedPaths.includes(path)) {
     return <Navigate to={`/${userRole}`} replace />;
   }

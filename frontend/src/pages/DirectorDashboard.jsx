@@ -221,7 +221,7 @@ const DirectorDashboard = () => {
         <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Mise à jour des analyses en cours...</p>
       ) : (
         <>
-          <div className="grid-responsive flex gap-4 mb-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)' }}>
+          <div className="kpi-grid">
             <KPI title="Total Flux" value={totalRequestsCount} icon={Package} color="#3b82f6" />
             <KPI title="Coût Validé" value={formattedTotalCost} icon={TrendingUp} color="#10b981" />
             <KPI title="En attente" value={pendingRequestsCount} icon={Clock} color="#f59e0b" />

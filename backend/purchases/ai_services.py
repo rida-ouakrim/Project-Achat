@@ -57,7 +57,8 @@ def get_sourcing_suggestions(product_name, location="Casablanca"):
             generation_config={"temperature": 0.2}
         )
         
-        # Extraction sécurisée car le helper .text crash parfois quand Google Grounding injecte des métadonnées riches
+        # Extraction ultra-sécurisée : l'accès à .text peut lever ValueError si Google Grounding injecte des citations.
+        # Le hasattr renvoie True mais l'accès lève ValueError, donc il faut un try/except individuel par part !
         try:
             text = response.text
         except Exception:
@@ -65,24 +66,34 @@ def get_sourcing_suggestions(product_name, location="Casablanca"):
             try:
                 for candidate in response.candidates:
                     for part in candidate.content.parts:
-                        if hasattr(part, 'text') and part.text:
-                            text += part.text
+                        try:
+                            # Chaque part est testée individuellement pour ne pas bloquer les autres
+                            part_text = part.text
+                            if part_text:
+                                text += part_text
+                        except Exception:
+                            pass # Ignorer les métadonnées de recherche Google qui ne sont pas du texte
             except Exception:
                 pass
 
         text = text.strip()
-        # Nettoyer les éventuels backticks Markdown
-        if text.startswith('```json'):
-            text = text[7:]
-        if text.startswith('```'):
-            text = text[3:]
-        if text.endswith('```'):
-            text = text[:-3]
+        
+        # Extraction robuste du bloc JSON grâce à Regex (pour éliminer le texte explicatif éventuel)
+        import re
+        json_match = re.search(r'\[.*\]', text, re.DOTALL)
+        if json_match:
+            text = json_match.group(0)
             
-        suppliers = json.loads(text.strip())
+        # Nettoyage final au cas où des backticks Markdown subsisteraient
+        text = text.replace('```json', '').replace('```', '').strip()
+            
+        suppliers = json.loads(text)
         return {"success": True, "data": suppliers}
     except Exception as e:
         print(f"Vertex AI Sourcing Error: {e}")
+        # Afficher le texte reçu pour debug si la conversion JSON échoue
+        if 'text' in locals() and text:
+            print(f"Texte reçu de Gemini qui a échoué à l'analyse: {text[:500]}")
         return {"success": False, "error": str(e)}
 
 def extract_text_from_file(file_obj, filename):
@@ -103,10 +114,31 @@ def extract_text_from_file(file_obj, filename):
             # Si le PDF est vide de texte (scanné), on pourrait utiliser pdf2image + tesseract
             # Mais pour simplifier, on s'attend à des PDF numériques ou on compte sur pdfplumber.
         elif ext in ['png', 'jpg', 'jpeg']:
-            image = Image.open(file_obj)
-            text = pytesseract.image_to_string(image, lang='fra')
+            try:
+                # Essayer d'abord Tesseract (si configuré localement ou sur le serveur)
+                image = Image.open(file_obj)
+                text = pytesseract.image_to_string(image, lang='fra')
+            except Exception as tesseract_err:
+                print(f"Tesseract non disponible ou en échec, passage à Gemini Multimodal pour {filename}: {tesseract_err}")
+                try:
+                    # Rembobiner le fichier pour le lire à partir du début
+                    file_obj.seek(0)
+                    file_bytes = file_obj.read()
+                    
+                    from vertexai.generative_models import Part
+                    mime_type = "image/png" if ext == "png" else "image/jpeg"
+                    image_part = Part.from_data(data=file_bytes, mime_type=mime_type)
+                    
+                    # Gemini 2.5 Flash lit directement les images avec une précision extrême
+                    model = GenerativeModel("gemini-2.5-flash")
+                    prompt = "Extrais tout le texte et les chiffres de cette image de devis ou fiche technique de manière exhaustive et très précise."
+                    response = model.generate_content([prompt, image_part])
+                    text = response.text
+                except Exception as gemini_err:
+                    print(f"Échec critique du fallback Gemini pour {filename}: {gemini_err}")
+                    text = f"[Erreur de lecture du fichier {filename}]"
     except Exception as e:
-        print(f"Erreur d'extraction OCR pour {filename}: {e}")
+        print(f"Erreur d'extraction générale pour {filename}: {e}")
         text = f"[Erreur de lecture du fichier {filename}]"
         
     return text
@@ -132,17 +164,22 @@ def compare_quotes(files_data):
         Voici le contenu brut extrait de plusieurs devis et/ou fiches techniques :
         {context}
         
-        VOTRE ANALYSE :
-        Analyse ces documents en détail à la lumière des besoins de SEFAMAR (camions, logistique, pièces détachées lourdes).
-        1. Identifie précisément les produits/services proposés, quantités, prix unitaires, totaux et fournisseurs.
-        2. Génère un tableau comparatif détaillé en Markdown pour confronter objectivement les offres.
-        3. Formule une recommandation argumentée et stratégique sur l'offre la plus compatible et avantageuse pour SEFAMAR.
-        4. Signale tout risque ou manque d'information cruciale (ex: garantie constructeur, délais de livraison, conformité MAN...).
+        VOTRE MISSION & EXIGENCES DE FORMAT :
+        Ne perds pas de jetons à rédiger des descriptions individuelles ou des listes de détails pour chaque produit/devis séparément.
         
-        Formatte ta réponse en beau Markdown structuré et professionnel (utilises des listes, des titres ##, et un tableau Markdown pur).
+        Va DIRECTEMENT à l'essentiel en structurant ton rapport exclusivement ainsi :
+        1. ## 📊 Tableau Comparatif Synthétique (Génère directement un grand tableau Markdown clair pour confronter toutes les offres : Caractéristiques, Prix unitaire MAD, Garantie, Connectivité, Points Forts, Points Faibles, et Observations pour SEFAMAR).
+        2. ## 💡 Recommandation Stratégique Justifiée (Explique clairement quelle offre est la plus avantageuse pour SEFAMAR S.A., son réseau national, ses ateliers et ses contraintes).
+        3. ## ⚠️ Points de Vigilance et Risques (Signale les garanties manquantes, les délais de livraison, la connectivité réseau wifi/ethernet manquante ou toute autre anomalie commerciale).
         """
         
-        response = model.generate_content(prompt, generation_config={"temperature": 0.1})
+        response = model.generate_content(
+            prompt,
+            generation_config={
+                "temperature": 0.1,
+                "max_output_tokens": 8192
+            }
+        )
         return {"success": True, "markdown": response.text}
     except Exception as e:
         print(f"Vertex AI Compare Error: {e}")

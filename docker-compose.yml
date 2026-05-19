@@ -1,5 +1,5 @@
 services:
-  # 1. Base de données PostgreSQL (Intégrée dynamiquement à partir de votre commande)
+  # 1. Base de données PostgreSQL
   db:
     image: postgres:16
     container_name: project_postgres
@@ -33,12 +33,15 @@ services:
       - db
     restart: always
 
-  # 3. Frontend React Nginx
+  # 3. Frontend React + Nginx + HTTPS
   frontend:
     build: ./frontend
     container_name: project_frontend
     ports:
-      - "8585:80"
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - backend
     restart: always

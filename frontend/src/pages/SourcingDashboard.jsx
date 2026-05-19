@@ -146,7 +146,7 @@ const SourcingDashboard = () => {
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
             <span style={{ fontSize: '1.5rem' }}>🔍</span> Sourcing Intelligent IA
           </h2>
-          <p className="text-sm text-muted" style={{ margin: '4px 0 0 0' }}>Trouvez et comparez des fournisseurs grâce à Google AI Search Grounding</p>
+          <p className="text-sm text-muted" style={{ margin: '4px 0 0 0' }}>Trouvez, analysez et comparez des fournisseurs stratégiques mondiaux et locaux.</p>
         </div>
       </div>
 
@@ -220,9 +220,9 @@ const SourcingDashboard = () => {
                   </div>
                 </div>
                 
-                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e3a8a', margin: '0 0 0.5rem 0' }}>Analyse Google Search en cours...</h3>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: '600', color: '#1e3a8a', margin: '0 0 0.5rem 0' }}>Recherche & Sourcing en cours...</h3>
                 <p style={{ color: '#3b82f6', maxWidth: '500px', padding: '0 1rem', margin: '0 auto 1rem auto' }}>
-                  Gemini interroge les bases de données en direct pour récupérer le maximum de fournisseurs pour <strong>"{product}"</strong> à <strong>{location}</strong>.
+                  L'assistant de sourcing recherche en temps réel et analyse les bases de données pour identifier les meilleurs partenaires commerciaux pour <strong>"{product}"</strong> à <strong>{location}</strong>.
                 </p>
 
                 {/* Percentage Bar */}
