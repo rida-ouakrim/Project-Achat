@@ -11,7 +11,14 @@ API.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (config.headers && typeof config.headers.set === 'function') {
+        config.headers.set('Authorization', `Bearer ${token}`);
+      } else {
+        config.headers = {
+          ...config.headers,
+          Authorization: `Bearer ${token}`
+        };
+      }
     }
     return config;
   },
@@ -43,7 +50,14 @@ API.interceptors.response.use(
           localStorage.setItem('accessToken', access);
 
           // Mettre à jour l'en-tête de la requête originale et la relancer
-          originalRequest.headers.Authorization = `Bearer ${access}`;
+          if (originalRequest.headers && typeof originalRequest.headers.set === 'function') {
+            originalRequest.headers.set('Authorization', `Bearer ${access}`);
+          } else {
+            originalRequest.headers = {
+              ...originalRequest.headers,
+              Authorization: `Bearer ${access}`
+            };
+          }
           return API(originalRequest);
         } catch (refreshError) {
           // Si le token de rafraîchissement a expiré aussi, déconnexion complète

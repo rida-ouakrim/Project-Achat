@@ -277,6 +277,7 @@ const DirectorDashboard = () => {
                   <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                     <tr>
                       <th>N° Commande</th>
+                      <th>Date</th>
                       <th>Demandeur</th>
                       <th>Produit</th>
                       <th>Coût / Fournisseur</th>
@@ -287,6 +288,12 @@ const DirectorDashboard = () => {
                     {allRequestsSorted.map(order => (
                       <tr key={order.id}>
                         <td style={{ fontWeight: 500 }}>{order.order_number}</td>
+                        <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                          {order.date_created ? (() => {
+                            const parts = order.date_created.split('-');
+                            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : order.date_created;
+                          })() : '-'}
+                        </td>
                         <td style={{ fontSize: '0.8125rem' }}>{order.requester_name}</td>
                         <td>
                           <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
