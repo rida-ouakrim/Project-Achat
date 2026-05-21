@@ -94,5 +94,7 @@ export const sendMessageToAI = (message) => API.post('chat/', { message });
 
 export const fetchSourcingHistory = () => API.get('sourcing-history/');
 export const fetchQuoteComparisonHistory = () => API.get('quote-comparison-history/');
+export const deleteSourcingHistory = (id) => API.delete(`sourcing-history/${id}/`);
+export const deleteQuoteComparisonHistory = (id) => API.delete(`quote-comparison-history/${id}/`);
 
 export default API;

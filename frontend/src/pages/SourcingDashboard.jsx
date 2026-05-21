@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Search, Loader2, MapPin, Globe, Phone, Building, History, ArrowLeft, Calendar } from 'lucide-react';
+import { Search, Loader2, MapPin, Globe, Phone, Building, History, ArrowLeft, Calendar, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import API, { fetchSourcingHistory } from '../api';
+import API, { fetchSourcingHistory, deleteSourcingHistory } from '../api';
 
 const SourcingDashboard = () => {
   const [activeTab, setActiveTab] = useState('search'); // 'search' | 'history'
@@ -62,6 +62,29 @@ const SourcingDashboard = () => {
       toast.error("Impossible de charger l'historique.");
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteHistory = async (e, id) => {
+    e.stopPropagation(); // Évite le clic sur la ligne de déclencher la sélection de l'historique
+    
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette recherche de l'historique ?")) {
+      const toastId = toast.loading("Suppression en cours...");
+      try {
+        await deleteSourcingHistory(id);
+        toast.success("Recherche supprimée avec succès !", { id: toastId });
+        
+        // Si la recherche supprimée était sélectionnée, vider la sélection
+        if (selectedHistoryItem?.id === id) {
+          setSelectedHistoryItem(null);
+        }
+        
+        // Recharger l'historique
+        loadHistory();
+      } catch (err) {
+        console.error("Error deleting history:", err);
+        toast.error("Impossible de supprimer cette recherche.", { id: toastId });
+      }
     }
   };
 
@@ -320,14 +343,24 @@ const SourcingDashboard = () => {
           {selectedHistoryItem ? (
             /* DETAILED VIEW OF A SAVED HISTORY SEARCH */
             <div className="card">
-              <button 
-                onClick={() => setSelectedHistoryItem(null)}
-                className="btn mb-4" 
-                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', background: '#fff' }}
-              >
-                <ArrowLeft size={16} />
-                Retour à l'historique
-              </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <button 
+                  onClick={() => setSelectedHistoryItem(null)}
+                  className="btn" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #cbd5e1', padding: '0.5rem 1rem', background: '#fff' }}
+                >
+                  <ArrowLeft size={16} />
+                  Retour à l'historique
+                </button>
+                <button 
+                  onClick={(e) => handleDeleteHistory(e, selectedHistoryItem.id)}
+                  className="btn" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid #fecaca', padding: '0.5rem 1rem', background: '#fef2f2', color: '#dc2626' }}
+                >
+                  <Trash2 size={16} />
+                  Supprimer la recherche
+                </button>
+              </div>
               
               <div style={{ backgroundColor: '#f8fafc', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', border: '1px solid #e2e8f0' }}>
                 <h3 style={{ margin: 0 }}>Recherche : {selectedHistoryItem.product}</h3>
@@ -434,9 +467,38 @@ const SourcingDashboard = () => {
                             </span>
                           </td>
                           <td>
-                            <button className="btn btn-secondary btn-sm" style={{ fontSize: '0.8125rem' }}>
-                              Voir
-                            </button>
+                            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                              <button 
+                                className="btn btn-secondary btn-sm" 
+                                style={{ fontSize: '0.8125rem' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedHistoryItem(item);
+                                }}
+                              >
+                                Voir
+                              </button>
+                              <button
+                                onClick={(e) => handleDeleteHistory(e, item.id)}
+                                style={{
+                                  background: 'none',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  padding: '6px',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  transition: 'background-color 0.2s',
+                                }}
+                                title="Supprimer cette recherche"
+                                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}

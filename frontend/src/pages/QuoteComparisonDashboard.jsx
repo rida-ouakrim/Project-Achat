@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { UploadCloud, Loader2, FileText, CheckCircle, AlertTriangle, History, Calendar, ArrowRight } from 'lucide-react';
+import { UploadCloud, Loader2, FileText, CheckCircle, AlertTriangle, History, Calendar, ArrowRight, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import API, { fetchQuoteComparisonHistory } from '../api';
+import API, { fetchQuoteComparisonHistory, deleteQuoteComparisonHistory } from '../api';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -61,6 +61,29 @@ const QuoteComparisonDashboard = () => {
       toast.error("Impossible de charger l'historique.");
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleDeleteHistory = async (e, id) => {
+    e.stopPropagation(); // Évite la sélection de l'élément dans la liste
+    
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer définitivement cette analyse de l'historique ?")) {
+      const toastId = toast.loading("Suppression en cours...");
+      try {
+        await deleteQuoteComparisonHistory(id);
+        toast.success("Analyse supprimée avec succès !", { id: toastId });
+        
+        // Si l'élément supprimé était celui sélectionné, on réinitialise la sélection
+        if (selectedHistoryItem?.id === id) {
+          setSelectedHistoryItem(null);
+        }
+        
+        // Recharger la liste d'historique
+        loadHistory();
+      } catch (err) {
+        console.error("Error deleting history:", err);
+        toast.error("Impossible de supprimer cette analyse.", { id: toastId });
+      }
     }
   };
 
@@ -487,12 +510,34 @@ const QuoteComparisonDashboard = () => {
                         className={`history-card-item ${isSelected ? 'selected' : ''}`}
                         onClick={() => setSelectedHistoryItem(item)}
                       >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748b', fontSize: '0.75rem' }}>
                             <Calendar size={12} />
                             {formatDate(item.created_at)}
                           </div>
-                          {isSelected && <ArrowRight size={14} color="#2563eb" />}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <button
+                              onClick={(e) => handleDeleteHistory(e, item.id)}
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: '#ef4444',
+                                cursor: 'pointer',
+                                padding: '4px',
+                                borderRadius: '4px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                transition: 'background-color 0.2s',
+                              }}
+                              title="Supprimer cette analyse"
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                            {isSelected && <ArrowRight size={14} color="#2563eb" />}
+                          </div>
                         </div>
                         <h4 style={{ fontSize: '0.875rem', margin: '0 0 0.5rem 0', color: isSelected ? '#1e40af' : '#1e293b', wordBreak: 'break-all' }}>
                           {item.filenames?.length} Fichier{item.filenames?.length > 1 ? 's' : ''} comparé{item.filenames?.length > 1 ? 's' : ''}

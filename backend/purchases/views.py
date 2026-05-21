@@ -194,7 +194,7 @@ def ai_sourcing(request):
     else:
         return Response(result, status=500)
 
-class SourcingHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+class SourcingHistoryViewSet(viewsets.ModelViewSet):
     queryset = SourcingHistory.objects.all()
     serializer_class = SourcingHistorySerializer
     permission_classes = [permissions.AllowAny]
@@ -228,7 +228,7 @@ def ai_compare_quotes(request):
     else:
         return Response(result, status=500)
 
-class QuoteComparisonHistoryViewSet(viewsets.ReadOnlyModelViewSet):
+class QuoteComparisonHistoryViewSet(viewsets.ModelViewSet):
     queryset = QuoteComparisonHistory.objects.all()
     serializer_class = QuoteComparisonHistorySerializer
     permission_classes = [permissions.AllowAny]

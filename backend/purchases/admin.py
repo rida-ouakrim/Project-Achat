@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem
+from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem, SourcingHistory, QuoteComparisonHistory
 
 class PurchaseItemInline(admin.TabularInline):
     model = PurchaseItem
@@ -21,3 +21,19 @@ class PurchaseRequestAdmin(admin.ModelAdmin):
 class SupplierCatalogAdmin(admin.ModelAdmin):
     list_display = ['product_name', 'supplier_name', 'price', 'updated_at']
     search_fields = ['product_name', 'supplier_name']
+
+@admin.register(SourcingHistory)
+class SourcingHistoryAdmin(admin.ModelAdmin):
+    list_display = ['product', 'location', 'created_at']
+    list_filter = ['created_at', 'location']
+    search_fields = ['product', 'location']
+
+@admin.register(QuoteComparisonHistory)
+class QuoteComparisonHistoryAdmin(admin.ModelAdmin):
+    list_display = ['display_filenames', 'created_at']
+    list_filter = ['created_at']
+    
+    def display_filenames(self, obj):
+        return ", ".join(obj.filenames)
+    display_filenames.short_description = "Fichiers comparés"
+
