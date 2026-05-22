@@ -204,6 +204,7 @@ def ai_compare_quotes(request):
     import concurrent.futures
 
     files = request.FILES.getlist('files')
+    instructions = request.data.get('instructions', '')
     if not files:
         return Response({'success': False, 'error': 'Aucun fichier fourni.'}, status=400)
         
@@ -233,7 +234,7 @@ def ai_compare_quotes(request):
     # Garantir la conservation de l'ordre initial des documents
     files_data.sort(key=lambda x: files_order.index(x["filename"]))
         
-    result = compare_quotes(files_data)
+    result = compare_quotes(files_data, instructions=instructions)
     if result.get('success'):
         try:
             # Enregistrer dans l'historique

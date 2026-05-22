@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 const QuoteComparisonDashboard = () => {
   const [activeTab, setActiveTab] = useState('new'); // 'new' | 'history'
   const [files, setFiles] = useState([]);
+  const [instructions, setInstructions] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState('');
 
@@ -216,6 +217,9 @@ const QuoteComparisonDashboard = () => {
     files.forEach(f => {
       formData.append('files', f);
     });
+    if (instructions.trim()) {
+      formData.append('instructions', instructions.trim());
+    }
 
     try {
       const response = await API.post('ai/compare-quotes/', formData, {
@@ -464,6 +468,34 @@ const QuoteComparisonDashboard = () => {
                     </ul>
                   </div>
                 )}
+
+                {/* Consignes particulières pour l'IA */}
+                <div className="mt-4">
+                  <label htmlFor="instructions" style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, color: '#475569', marginBottom: '0.5rem' }}>
+                    💡 Consignes particulières pour l'IA (optionnel)
+                  </label>
+                  <textarea
+                    id="instructions"
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder="Exemple : Compare les offres globales d'ESR et Fournipro contenant à la fois 2 PC et 3 imprimantes, et mets en évidence les différences..."
+                    style={{
+                      width: '100%',
+                      minHeight: '80px',
+                      padding: '0.75rem',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '0.8125rem',
+                      color: '#334155',
+                      backgroundColor: 'white',
+                      resize: 'vertical',
+                      outline: 'none',
+                      transition: 'border-color 0.2s',
+                    }}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                  />
+                </div>
 
                 <button
                   className="btn btn-primary w-full mt-6"

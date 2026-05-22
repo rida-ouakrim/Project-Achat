@@ -137,7 +137,7 @@ def extract_text_from_file(file_obj, filename):
         
     return text
 
-def compare_quotes(files_data):
+def compare_quotes(files_data, instructions=""):
     """
     files_data = [{"filename": "devis1.pdf", "text": "contenu extrait..."}, ...]
     """
@@ -150,6 +150,14 @@ def compare_quotes(files_data):
             context += file['text']
             context += f"\n--- FIN DU DOCUMENT : {file['filename']} ---\n"
             
+        # Intégrer les consignes personnalisées si elles existent
+        user_instructions_prompt = ""
+        if instructions:
+            user_instructions_prompt = f"""
+        CONSIGNES SPÉCIFIQUES DE L'UTILISATEUR (À RESPECTER ABSOLUMENT) :
+        {instructions}
+        """
+
         prompt = f"""
         Tu es un analyste achats expert mandaté par l'entreprise SEFAMAR S.A. au Maroc.
         
@@ -158,17 +166,20 @@ def compare_quotes(files_data):
         Voici le contenu brut extrait de plusieurs devis et/ou fiches techniques :
         {context}
         
+        {user_instructions_prompt}
+        
         VOTRE MISSION & EXIGENCES DE FORMAT :
         Ne perds pas de jetons à rédiger des descriptions individuelles ou des listes de détails pour chaque produit/devis séparément.
         
         Va DIRECTEMENT à l'essentiel en structurant ton rapport exclusivement ainsi :
         1. ## 📊 Tableau Comparatif Synthétique
-        Génère directement un tableau Markdown compact à 4 colonnes :
-        `| Caractéristique | HP M236dw LaserJet (9YF95A) | HP LaserJet M236d (9YF94A) | Observations pour SEFAMAR S.A. |`
+        Génère directement un tableau Markdown comparatif adapté aux documents fournis (avec une colonne par modèle, par produit ou par fournisseur comparé, et une colonne finale pour les observations).
+        Par exemple : `| Caractéristique | Option/Fournisseur A | Option/Fournisseur B | Observations pour SEFAMAR S.A. |`
+        Adapte dynamiquement les en-têtes de colonnes aux produits ou fournisseurs réels présents dans les devis (ex: PC, imprimantes, ou les noms des fournisseurs comme FOURNIPRO et ESR).
         **CONSIGNE DE CONCISION INTERDITE DE DÉPASSER :** Écris au maximum 12 mots par cellule dans le tableau pour qu'il soit ultra-lisible, propre et rapide à générer.
         
         2. ## 🔍 Forces & Faiblesses des Offres
-        Détaille ici sous forme de puces claires les points forts et points faibles de chaque imprimante.
+        Détaille ici sous forme de puces claires les points forts et points faibles de chaque produit, modèle ou fournisseur.
         
         3. ## 💡 Recommandation Stratégique Justifiée
         Explique clairement quelle offre est la plus avantageuse pour SEFAMAR S.A., son réseau national, ses ateliers et ses contraintes.
