@@ -201,17 +201,37 @@ class SourcingHistoryViewSet(viewsets.ModelViewSet):
 
 @api_view(['POST'])
 def ai_compare_quotes(request):
+    import concurrent.futures
+
     files = request.FILES.getlist('files')
     if not files:
         return Response({'success': False, 'error': 'Aucun fichier fourni.'}, status=400)
         
+    # Extraction du texte en parallèle pour réduire le temps global d'OCR
     files_data = []
-    for f in files:
-        text = extract_text_from_file(f.file, f.name)
-        files_data.append({
-            "filename": f.name,
-            "text": text
-        })
+    files_order = [f.name for f in files]
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(files), 6)) as executor:
+        future_to_filename = {
+            executor.submit(extract_text_from_file, f.file, f.name): f.name
+            for f in files
+        }
+        
+        for future in concurrent.futures.as_completed(future_to_filename):
+            filename = future_to_filename[future]
+            try:
+                text = future.result()
+            except Exception as exc:
+                print(f"Exception lors de l'extraction de {filename}: {exc}")
+                text = f"[Erreur de lecture du fichier {filename}]"
+            
+            files_data.append({
+                "filename": filename,
+                "text": text
+            })
+            
+    # Garantir la conservation de l'ordre initial des documents
+    files_data.sort(key=lambda x: files_order.index(x["filename"]))
         
     result = compare_quotes(files_data)
     if result.get('success'):

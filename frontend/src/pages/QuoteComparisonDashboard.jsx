@@ -111,8 +111,8 @@ const QuoteComparisonDashboard = () => {
 
   const compressImage = (file) => {
     return new Promise((resolve) => {
-      // Si l'image fait moins de 1 Mo, on ne la compresse pas
-      if (file.size < 1024 * 1024) {
+      // Si l'image fait moins de 150 Ko, on ne la compresse pas
+      if (file.size < 150 * 1024) {
         resolve(file);
         return;
       }
