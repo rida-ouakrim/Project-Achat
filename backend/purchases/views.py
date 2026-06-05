@@ -85,6 +85,35 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     serializer_class = PurchaseRequestSerializer
     permission_classes = [permissions.AllowAny] 
 
+    def create(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if 'items' in data and isinstance(data['items'], str):
+            import json
+            try:
+                data['items'] = json.loads(data['items'])
+            except json.JSONDecodeError:
+                pass
+        serializer = self.get_serializer(data=data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        data = request.data.copy()
+        if 'items' in data and isinstance(data['items'], str):
+            import json
+            try:
+                data['items'] = json.loads(data['items'])
+            except json.JSONDecodeError:
+                pass
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=data, partial=partial)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
     def perform_update(self, serializer):
         instance = serializer.save()
         # Automatisation : Enregistrer ou mettre à jour le catalogue fournisseur dès qu'un prix est saisi

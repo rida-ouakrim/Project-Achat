@@ -33,7 +33,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'order_number', 'requester', 'requester_name', 
             'assignment', 'observation', 
-            'date_created', 'status', 'receipt_pdf', 'refusal_reason', 'items'
+            'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items'
         ]
         read_only_fields = ['order_number', 'date_created']
 

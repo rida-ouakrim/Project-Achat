@@ -31,6 +31,7 @@ class PurchaseRequest(models.Model):
     
     # Saisis ultérieurement par les achats (Fichiers joints globaux)
     receipt_pdf = models.FileField(upload_to='receipts/', blank=True, null=True)
+    request_pdf = models.FileField(upload_to='requests_pdf/', blank=True, null=True)
     refusal_reason = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):

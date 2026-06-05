@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
-import { TrendingUp, Package, Clock, CheckCircle, RefreshCw, Download, UserPlus, Users, Key } from 'lucide-react';
+import { TrendingUp, Package, Clock, CheckCircle, RefreshCw, Download, UserPlus, Users, Key, FileText } from 'lucide-react';
+
+const getMediaUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const backendBase = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : '';
+  return backendBase + path;
+};
 import toast from 'react-hot-toast';
 import { fetchRequests, createUser, fetchUsers, resetUserPassword } from '../api';
 
@@ -287,7 +296,21 @@ const DirectorDashboard = () => {
                   <tbody>
                     {allRequestsSorted.map(order => (
                       <tr key={order.id}>
-                        <td style={{ fontWeight: 500 }}>{order.order_number}</td>
+                        <td style={{ fontWeight: 500 }}>
+                          <div>{order.order_number}</div>
+                          {order.request_pdf && (
+                            <a 
+                              href={getMediaUrl(order.request_pdf)} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                              style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                            >
+                              <FileText size={12} />
+                              <span>Dossier PDF</span>
+                            </a>
+                          )}
+                        </td>
                         <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                           {order.date_created ? (() => {
                             const parts = order.date_created.split('-');

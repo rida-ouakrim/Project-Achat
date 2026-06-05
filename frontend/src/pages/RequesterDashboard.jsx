@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Send, AlertCircle, RefreshCw, Plus, Trash2 } from 'lucide-react';
+import { Send, AlertCircle, RefreshCw, Plus, Trash2, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, createRequest } from '../api';
+
+const getMediaUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  const backendBase = window.location.hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : '';
+  return backendBase + path;
+};
 
 const RequesterDashboard = () => {
   const [requests, setRequests] = useState([]);
@@ -234,7 +243,21 @@ const RequesterDashboard = () => {
               <tbody>
                 {requests.map(req => (
                   <tr key={req.id}>
-                    <td style={{ fontWeight: 500 }}>{req.order_number}</td>
+                    <td style={{ fontWeight: 500 }}>
+                      <div>{req.order_number}</div>
+                      {req.request_pdf && (
+                        <a 
+                          href={getMediaUrl(req.request_pdf)} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                          style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                        >
+                          <FileText size={12} />
+                          <span>Dossier PDF</span>
+                        </a>
+                      )}
+                    </td>
                     <td>
                       <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
                         {req.items && req.items.map((it, idx) => (
