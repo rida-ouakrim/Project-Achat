@@ -1,85 +1,59 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, ShoppingCart, BarChart3, BookOpen } from 'lucide-react';
+import { User, ShoppingCart, BarChart3, BookOpen, CheckSquare } from 'lucide-react';
 
 const Sidebar = () => {
   const userRole = localStorage.getItem('userRole');
+  const userName = localStorage.getItem('userName');
 
   return (
-    <aside className="sidebar" style={{
-      width: '250px',
-      backgroundColor: 'var(--color-sidebar)',
-      borderRight: '1px solid var(--color-border)',
-      display: 'flex',
-      flexDirection: 'column'
-    }}>
-      <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--color-border)', display: 'flex', justifyContent: 'center' }}>
+    <aside className="sidebar">
+      <div className="sidebar-logo">
         <img 
           src="/logo.png" 
           alt="MAN Logo" 
-          style={{ height: '45px', objectFit: 'contain' }} 
+          style={{ height: '40px', objectFit: 'contain' }} 
         />
       </div>
       
-      <nav style={{ padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <p style={{ fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600, paddingLeft: '0.75rem', marginBottom: '0.5rem' }}>Rôles</p>
+      <nav className="sidebar-nav">
+        <p className="sidebar-section-title">Rôles</p>
         
-        {userRole === 'requester' && (
-          <NavLink to="/requester" style={({ isActive }) => ({
-            display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-            borderRadius: 'var(--radius-md)', textDecoration: 'none',
-            backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-            color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-            fontWeight: isActive ? 600 : 500,
-            transition: 'var(--transition)'
-          })}>
-            <User size={20} />
+        {(userRole === 'requester' || userRole === 'director') && (
+          <NavLink to="/requester" className={({ isActive }) => `sidebar-link ${isActive ? 'active-demandeur' : ''}`}>
+            <User size={18} />
             Demandeur
           </NavLink>
         )}
 
         {userRole === 'purchasing' && (
-          <NavLink to="/purchasing" style={({ isActive }) => ({
-            display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-            borderRadius: 'var(--radius-md)', textDecoration: 'none',
-            backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-            color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-            fontWeight: isActive ? 600 : 500,
-            transition: 'var(--transition)'
-          })}>
-            <ShoppingCart size={20} />
+          <NavLink to="/purchasing" className={({ isActive }) => `sidebar-link ${isActive ? 'active-purchasing' : ''}`}>
+            <ShoppingCart size={18} />
             Équipe Achats
           </NavLink>
         )}
 
         {userRole === 'director' && (
-          <NavLink to="/director" style={({ isActive }) => ({
-            display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-            borderRadius: 'var(--radius-md)', textDecoration: 'none',
-            backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-            color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-            fontWeight: isActive ? 600 : 500,
-            transition: 'var(--transition)'
-          })}>
-            <BarChart3 size={20} />
-            Directeur (DG)
+          <NavLink to="/director" className={({ isActive }) => `sidebar-link ${isActive ? 'active-directeur' : ''}`}>
+            <BarChart3 size={18} />
+            Tableau de bord
+          </NavLink>
+        )}
+
+        {(userRole === 'director' || userName === 'chadi@sefamar.ma') && (
+          <NavLink to="/validation" className={({ isActive }) => `sidebar-link ${isActive ? 'active-validation' : ''}`}>
+            <CheckSquare size={18} />
+            Validation
           </NavLink>
         )}
 
         {(userRole === 'purchasing' || userRole === 'director') && (
           <>
-            <div style={{ margin: '1rem 0 0.25rem 0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            <div className="sidebar-section-divider">
               Référentiels
             </div>
-            <NavLink to="/suppliers" style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-              borderRadius: 'var(--radius-md)', textDecoration: 'none',
-              backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-              color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-              fontWeight: isActive ? 600 : 500,
-              transition: 'var(--transition)'
-            })}>
-              <BookOpen size={20} />
+            <NavLink to="/suppliers" className={({ isActive }) => `sidebar-link ${isActive ? 'active-suppliers' : ''}`}>
+              <BookOpen size={18} />
               Fournisseurs
             </NavLink>
           </>
@@ -87,29 +61,15 @@ const Sidebar = () => {
 
         {(userRole === 'purchasing' || userRole === 'director') && (
           <>
-            <div style={{ margin: '1rem 0 0.25rem 0.75rem', borderTop: '1px solid var(--color-border)', paddingTop: '1rem', fontSize: '0.75rem', textTransform: 'uppercase', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+            <div className="sidebar-section-divider">
               Outils IA
             </div>
-            <NavLink to="/sourcing" style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-              borderRadius: 'var(--radius-md)', textDecoration: 'none',
-              backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-              color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-              fontWeight: isActive ? 600 : 500,
-              transition: 'var(--transition)'
-            })}>
-              <span style={{ fontSize: '1.2rem' }}>🔍</span>
+            <NavLink to="/sourcing" className={({ isActive }) => `sidebar-link ${isActive ? 'active-sourcing' : ''}`}>
+              <span style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center' }}>🔍</span>
               Sourcing (Recherche)
             </NavLink>
-            <NavLink to="/compare-quotes" style={({ isActive }) => ({
-              display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem',
-              borderRadius: 'var(--radius-md)', textDecoration: 'none',
-              backgroundColor: isActive ? 'var(--color-primary-light)' : 'transparent',
-              color: isActive ? 'var(--color-primary)' : 'var(--color-text-main)',
-              fontWeight: isActive ? 600 : 500,
-              transition: 'var(--transition)'
-            })}>
-              <span style={{ fontSize: '1.2rem' }}>📊</span>
+            <NavLink to="/compare-quotes" className={({ isActive }) => `sidebar-link ${isActive ? 'active-compare' : ''}`}>
+              <span style={{ fontSize: '1.1rem', display: 'flex', alignItems: 'center' }}>📊</span>
               Comparaison Devis
             </NavLink>
           </>

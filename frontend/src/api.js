@@ -97,4 +97,8 @@ export const fetchQuoteComparisonHistory = () => API.get('quote-comparison-histo
 export const deleteSourcingHistory = (id) => API.delete(`sourcing-history/${id}/`);
 export const deleteQuoteComparisonHistory = (id) => API.delete(`quote-comparison-history/${id}/`);
 
+export const fetchNotifications = (userId) => API.get(userId ? `notifications/?user_id=${userId}` : 'notifications/');
+export const markAllNotificationsRead = (userId) => API.post('notifications/mark_all_read/', { user_id: userId });
+export const validateRequest = (id, userId) => API.post(`requests/${id}/validate_request/`, { user_id: userId });
+
 export default API;

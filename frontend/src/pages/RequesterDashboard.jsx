@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Send, AlertCircle, RefreshCw, Plus, Trash2, FileText } from 'lucide-react';
+import { Send, AlertCircle, RefreshCw, Plus, Trash2, FileText, Eye, X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchRequests, createRequest } from '../api';
+import { fetchRequests, createRequest, fetchCatalog } from '../api';
 
 const getMediaUrl = (path) => {
   if (!path) return '';
@@ -17,6 +17,12 @@ const RequesterDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [productSuggestions, setProductSuggestions] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('Tous');
+  
+  // States for request details modal
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+  const [detailsRequest, setDetailsRequest] = useState(null);
 
   const [formData, setFormData] = useState({
     assignment: '',
@@ -43,8 +49,21 @@ const RequesterDashboard = () => {
     }
   };
 
+  const loadSuggestions = async () => {
+    try {
+      const response = await fetchCatalog();
+      // Récupérer le nom unique de tous les articles du catalogue
+      const products = response.data.map(item => item.product_name);
+      const uniqueProducts = [...new Set(products)];
+      setProductSuggestions(uniqueProducts);
+    } catch (err) {
+      console.error("Erreur de chargement des suggestions:", err);
+    }
+  };
+
   useEffect(() => {
     loadRequests();
+    loadSuggestions();
   }, []);
 
   const handleItemChange = (index, e) => {
@@ -87,8 +106,9 @@ const RequesterDashboard = () => {
       await createRequest(payload);
       setFormData({ assignment: '', observation: '' });
       setItems([{ product: '', qty: '' }]);
-      // Recharger les demandes pour afficher la nouvelle
+      // Recharger les demandes et les suggestions pour actualiser
       await loadRequests();
+      await loadSuggestions();
       toast.success('Votre demande a été créée et transmise avec succès !');
     } catch (err) {
       console.error(err);
@@ -99,8 +119,20 @@ const RequesterDashboard = () => {
     }
   };
 
+  const filteredRequests = requests.filter(req => {
+    if (statusFilter === 'Tous') return true;
+    return req.status === statusFilter;
+  });
+
   return (
     <div>
+      {/* Suggestions de produits */}
+      <datalist id="product-suggestions">
+        {productSuggestions.map((prod, idx) => (
+          <option key={idx} value={prod} />
+        ))}
+      </datalist>
+
       <div className="flex justify-between items-center mb-4">
         <h2>Espace Demandeur</h2>
         <button className="btn btn-outline" onClick={loadRequests} title="Actualiser" disabled={loading}>
@@ -140,7 +172,7 @@ const RequesterDashboard = () => {
 
           <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
-              <label className="form-label">Affectation (Service/Camion)</label>
+              <label className="form-label">Affectation</label>
               <input 
                 type="text" 
                 name="assignment" 
@@ -174,6 +206,7 @@ const RequesterDashboard = () => {
                     required 
                     placeholder="Nom du produit (Ex: Filtre à air)"
                     disabled={submitting}
+                    list="product-suggestions"
                   />
                 </div>
                 <div className="form-group" style={{ width: '120px', marginBottom: 0 }}>
@@ -225,7 +258,25 @@ const RequesterDashboard = () => {
       </div>
 
       <div className="card">
-        <h3>Mes Demandes</h3>
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-2">
+          <h3 style={{ margin: 0 }}>Mes Demandes</h3>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Statut :</span>
+            <select 
+              value={statusFilter} 
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="form-input"
+              style={{ width: '160px', padding: '0.35rem 0.5rem', fontSize: '0.8125rem' }}
+            >
+              <option value="Tous">Tous</option>
+              <option value="En attente">En attente</option>
+              <option value="Commandé">Commandé</option>
+              <option value="Reçu">Reçu</option>
+              <option value="Refusé">Refusé</option>
+            </select>
+          </div>
+        </div>
+        
         {loading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Chargement des données...</p>
         ) : (
@@ -237,11 +288,13 @@ const RequesterDashboard = () => {
                   <th>Articles</th>
                   <th>Affectation</th>
                   <th>Date</th>
-                  <th>Statut</th>
+                  <th>Validation</th>
+                  <th>Statut Achat</th>
+                  <th style={{ textAlign: 'center' }}>Détails</th>
                 </tr>
               </thead>
               <tbody>
-                {requests.map(req => (
+                {filteredRequests.map(req => (
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>
                       <div>{req.order_number}</div>
@@ -265,8 +318,37 @@ const RequesterDashboard = () => {
                         ))}
                       </ul>
                     </td>
-                    <td>{req.assignment}</td>
-                    <td>{req.date_created}</td>
+                    <td style={{ maxWidth: '200px', wordBreak: 'break-all' }}>{req.assignment}</td>
+                    <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>{req.date_created}</td>
+                    <td>
+                      {req.is_validated ? (
+                        <span className="badge" style={{ 
+                          backgroundColor: '#dcfce7', 
+                          color: '#15803d', 
+                          border: '1px solid #bbf7d0',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          display: 'inline-block'
+                        }}>
+                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name})
+                        </span>
+                      ) : (
+                        <span className="badge" style={{ 
+                          backgroundColor: '#fee2e2', 
+                          color: '#b91c1c', 
+                          border: '1px solid #fecaca',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          display: 'inline-block'
+                        }}>
+                          Non validé
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className={`badge badge-${
                         req.status === 'En attente' ? 'pending' : 
@@ -291,12 +373,25 @@ const RequesterDashboard = () => {
                         </div>
                       )}
                     </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '0.25rem 0.5rem' }} 
+                        onClick={() => {
+                          setDetailsRequest(req);
+                          setIsDetailsModalOpen(true);
+                        }}
+                        title="Voir les détails"
+                      >
+                        <Eye size={16} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
-                {requests.length === 0 && (
+                {filteredRequests.length === 0 && (
                   <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                      Aucune demande soumise pour le moment.
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                      Aucune demande trouvée pour ce filtre.
                     </td>
                   </tr>
                 )}
@@ -305,6 +400,140 @@ const RequesterDashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Modal - Détails de la demande */}
+      {isDetailsModalOpen && detailsRequest && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '600px' }}>
+            <div className="modal-header">
+              <h3>Détails de la Demande ({detailsRequest.order_number})</h3>
+              <button className="btn btn-outline" onClick={() => setIsDetailsModalOpen(false)} style={{ padding: '0.25rem' }}>
+                <X size={16} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+              <div className="grid grid-cols-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p className="text-xs text-muted">Demandeur</p>
+                  <p style={{ fontWeight: 600 }}>{detailsRequest.requester_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Affectation</p>
+                  <p style={{ fontWeight: 600, wordBreak: 'break-all' }}>{detailsRequest.assignment || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Date de Création</p>
+                  <p style={{ fontWeight: 600 }}>{detailsRequest.date_created}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Validation</p>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    {detailsRequest.is_validated ? (
+                      <span className="badge" style={{ 
+                        backgroundColor: '#dcfce7', 
+                        color: '#15803d', 
+                        border: '1px solid #bbf7d0',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        Validé ({detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : detailsRequest.validated_by_name})
+                      </span>
+                    ) : (
+                      <span className="badge" style={{ 
+                        backgroundColor: '#fee2e2', 
+                        color: '#b91c1c', 
+                        border: '1px solid #fecaca',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        Non validé
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Statut Achat</p>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    <span className={`badge badge-${
+                      detailsRequest.status === 'En attente' ? 'pending' : 
+                      detailsRequest.status === 'Approuvé' ? 'approved' : 
+                      detailsRequest.status === 'Commandé' ? 'ordered' : 
+                      detailsRequest.status === 'Reçu' ? 'received' : 'rejected'
+                    }`}>
+                      {detailsRequest.status}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {detailsRequest.request_pdf && (
+                <div style={{ backgroundColor: 'var(--color-bg)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+                  <p className="text-xs text-muted mb-1">Document de Demande Joint</p>
+                  <a 
+                    href={getMediaUrl(detailsRequest.request_pdf)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2"
+                    style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}
+                  >
+                    <FileText size={16} />
+                    <span>Visualiser la demande PDF / Image</span>
+                  </a>
+                </div>
+              )}
+
+              <div>
+                <p className="text-xs text-muted mb-2">Articles demandés</p>
+                <div className="table-container">
+                  <table className="table" style={{ fontSize: '0.875rem' }}>
+                    <thead>
+                      <tr>
+                        <th>Article</th>
+                        <th style={{ textAlign: 'center' }}>Quantité</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detailsRequest.items && detailsRequest.items.map((it, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 500 }}>{it.product}</td>
+                          <td style={{ textAlign: 'center' }}>{it.qty}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {detailsRequest.observation && (
+                <div>
+                  <p className="text-xs text-muted mb-1">Observation</p>
+                  <div style={{ 
+                    backgroundColor: 'var(--color-bg)', 
+                    padding: '1rem', 
+                    borderRadius: 'var(--radius-md)', 
+                    border: '1px solid var(--color-border)',
+                    maxHeight: '200px',
+                    overflowY: 'auto',
+                    fontSize: '0.875rem',
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-all'
+                  }}>
+                    {detailsRequest.observation}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="flex justify-end mt-6">
+              <button className="btn btn-outline" onClick={() => setIsDetailsModalOpen(false)}>Fermer</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

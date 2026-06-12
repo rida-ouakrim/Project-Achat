@@ -1,35 +1,40 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap');
 
 :root {
-  /* Deep Impact High Contrast Theme */
-  --color-primary: #1e3a8a; /* Bold Navy Blue */
+  /* Clean Light Theme (MAN inspired) */
+  --color-primary: #1e3a8a; /* Navy Blue */
   --color-primary-hover: #1e40af;
-  --color-primary-light: #dbeafe;
+  --color-primary-light: #dbeafe; /* Soft Light Blue */
   
-  --color-bg: #f1f5f9; /* Slightly darker background for stronger pop */
+  --color-bg: #f8fafc; /* Sleek light background */
   --color-surface: #ffffff;
   
-  --color-text-main: #020617; /* Pitch dark for maximum contrast */
-  --color-text-muted: #475569; /* Darker gray */
+  --color-text-main: #0f172a; /* Slate 900 */
+  --color-text-muted: #64748b; /* Slate 500 */
   
-  --color-border: #cbd5e1; /* Stronger borders */
+  --color-border: #cbd5e1; /* Clean border color */
   
   --color-danger: #dc2626; /* Vivid red */
   --color-warning: #ea580c; /* Vivid orange */
   --color-success: #16a34a; /* Vivid green */
 
+  /* Sidebar - Light theme for clean appearance */
   --color-sidebar: #ffffff;
+  --color-sidebar-hover: #f1f5f9;
+  --color-sidebar-text: #475569;
+  --color-sidebar-text-active: #1e3a8a;
+  --color-sidebar-active-bg: #dbeafe;
   
   /* More Defined Shadows */
-  --shadow-sm: 0 2px 4px 0 rgba(0, 0, 0, 0.08);
-  --shadow-md: 0 4px 12px -2px rgba(0, 0, 0, 0.12);
-  --shadow-lg: 0 12px 24px -8px rgba(0, 0, 0, 0.15);
+  --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.05), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
   
-  --radius-md: 0.625rem;
-  --radius-lg: 1rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
   --radius-full: 9999px;
   
-  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -108,6 +113,11 @@ p { color: var(--color-text-muted); font-weight: 500; }
 .card:hover {
   box-shadow: var(--shadow-md);
 }
+
+.card.accent-primary { border-top: 3px solid var(--color-primary); }
+.card.accent-success { border-top: 3px solid var(--color-success); }
+.card.accent-warning { border-top: 3px solid var(--color-warning); }
+.card.accent-danger { border-top: 3px solid var(--color-danger); }
 
 .btn {
   display: inline-flex;
@@ -470,4 +480,137 @@ p { color: var(--color-text-muted); font-weight: 500; }
   .modal-header h3 {
     font-size: 1rem;
   }
+}
+
+/* Premium Sidebar Layout & Link classes */
+.sidebar {
+  width: 250px;
+  background-color: var(--color-sidebar);
+  border-right: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.sidebar-logo {
+  padding: 1rem 1.5rem;
+  background-color: var(--color-sidebar);
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.sidebar-nav {
+  padding: 1.5rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.sidebar-section-title {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding-left: 0.75rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-section-divider {
+  margin: 1rem 0 0.25rem 0.75rem;
+  border-top: 1px solid var(--color-border);
+  padding-top: 1rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.05em;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--color-sidebar-text);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: var(--transition);
+}
+
+.sidebar-link:hover {
+  background-color: var(--color-sidebar-hover);
+  color: var(--color-sidebar-text-active);
+}
+
+.sidebar-link.active {
+  background-color: var(--color-sidebar-active-bg);
+  color: var(--color-sidebar-text-active);
+  font-weight: 600;
+}
+
+/* Dynamic Sidebar Link Active Colors (Decorations) */
+.sidebar-link.active-demandeur {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  font-weight: 600;
+}
+.sidebar-link.active-directeur {
+  background-color: #dbeafe !important;
+  color: #1e3a8a !important;
+  font-weight: 600;
+}
+.sidebar-link.active-validation {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  font-weight: 600;
+}
+.sidebar-link.active-suppliers {
+  background-color: #f3e8ff !important;
+  color: #6b21a8 !important;
+  font-weight: 600;
+}
+.sidebar-link.active-sourcing {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+  font-weight: 600;
+}
+.sidebar-link.active-compare {
+  background-color: #e0f7fa !important;
+  color: #006064 !important;
+  font-weight: 600;
+}
+.sidebar-link.active-purchasing {
+  background-color: #e0f2fe !important;
+  color: #0369a1 !important;
+  font-weight: 600;
+}
+
+/* Light & Soft Card Decoration Classes */
+.card-soft-blue {
+  background-color: #f0f7ff !important;
+  border-color: #d0e7ff !important;
+}
+.card-soft-green {
+  background-color: #f0fdf4 !important;
+  border-color: #dcfce7 !important;
+}
+.card-soft-amber {
+  background-color: #fffbeb !important;
+  border-color: #fef3c7 !important;
+}
+.card-soft-red {
+  background-color: #fdf2f2 !important;
+  border-color: #fee2e2 !important;
+}
+.card-soft-purple {
+  background-color: #faf5ff !important;
+  border-color: #f3e8ff !important;
 }

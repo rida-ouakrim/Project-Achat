@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem, SourcingHistory, QuoteComparisonHistory
+from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem, SourcingHistory, QuoteComparisonHistory, Notification
 
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -26,6 +26,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
+    validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     items = PurchaseItemSerializer(many=True)
 
     class Meta:
@@ -33,7 +34,8 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'order_number', 'requester', 'requester_name', 
             'assignment', 'observation', 
-            'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items'
+            'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
+            'is_validated', 'validated_by', 'validated_by_name'
         ]
         read_only_fields = ['order_number', 'date_created']
 
@@ -71,3 +73,8 @@ class QuoteComparisonHistorySerializer(serializers.ModelSerializer):
     class Meta:
         model = QuoteComparisonHistory
         fields = '__all__'
+
+class NotificationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Notification
+        fields = ['id', 'user', 'message', 'is_read', 'created_at']

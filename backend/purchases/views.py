@@ -4,8 +4,8 @@ from rest_framework.response import Response
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Profile, PurchaseRequest, SupplierCatalog, SourcingHistory, QuoteComparisonHistory
-from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCatalogSerializer, SourcingHistorySerializer, QuoteComparisonHistorySerializer
+from .models import Profile, PurchaseRequest, SupplierCatalog, SourcingHistory, QuoteComparisonHistory, Notification
+from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCatalogSerializer, SourcingHistorySerializer, QuoteComparisonHistorySerializer, NotificationSerializer
 from .company_context import SEFAMAR_CONTEXT
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -99,7 +99,39 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        
+        # Check if the requester is a validator (auto-validation)
+        if instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma']:
+            instance.is_validated = True
+            instance.validated_by = instance.requester
+            instance.save()
+            
+            # Display name logic
+            validator_name = "Mme EL MANSOURI" if instance.requester.username == "man@sefamar.ma" else "Chadi Ismail"
+            
+            # Notify the purchasing team
+            purchasing_users = User.objects.filter(profile__role='purchasing')
+            for p_user in purchasing_users:
+                Notification.objects.create(
+                    user=p_user,
+                    message=f"La demande {instance.order_number} de {validator_name} a été validée automatiquement et est prête pour achat."
+                )
+        else:
+            # Notify validators: Mme EL MANSOURI and Chadi Ismail
+            validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma'])
+            for val in validators:
+                Notification.objects.create(
+                    user=val,
+                    message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} en attente de validation."
+                )
+
     def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        old_status = instance.status
+        
         data = request.data.copy()
         if 'items' in data and isinstance(data['items'], str):
             import json
@@ -107,11 +139,32 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 data['items'] = json.loads(data['items'])
             except json.JSONDecodeError:
                 pass
-        partial = kwargs.pop('partial', False)
-        instance = self.get_object()
+                
         serializer = self.get_serializer(instance, data=data, partial=partial)
         serializer.is_valid(raise_exception=True)
         self.perform_update(serializer)
+        
+        # Trigger status update notifications
+        updated_instance = self.get_object()
+        new_status = updated_instance.status
+        if old_status != new_status:
+            if new_status == 'Commandé':
+                Notification.objects.create(
+                    user=updated_instance.requester,
+                    message=f"Le statut de votre demande {updated_instance.order_number} est passé à Commandé."
+                )
+            elif new_status == 'Reçu':
+                Notification.objects.create(
+                    user=updated_instance.requester,
+                    message=f"Le statut de votre demande {updated_instance.order_number} est passé à Reçu."
+                )
+            elif new_status == 'Refusé':
+                reason = updated_instance.refusal_reason or "aucun motif spécifié"
+                Notification.objects.create(
+                    user=updated_instance.requester,
+                    message=f"Votre demande {updated_instance.order_number} a été refusée. Motif : {reason}."
+                )
+                
         return Response(serializer.data)
 
     def perform_update(self, serializer):
@@ -125,6 +178,42 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     supplier_name=item.supplier,
                     defaults={'price': item.price}
                 )
+
+    @action(detail=True, methods=['post'])
+    def validate_request(self, request, pk=None):
+        instance = self.get_object()
+        user_id = request.data.get('user_id')
+        if not user_id:
+            return Response({'error': "ID de l'utilisateur requis."}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            validator = User.objects.get(id=user_id)
+        except User.DoesNotExist:
+            return Response({'error': "Utilisateur non trouvé."}, status=status.HTTP_404_NOT_FOUND)
+            
+        instance.is_validated = True
+        instance.validated_by = validator
+        instance.save()
+        
+        # Display name logic
+        validator_name = "Mme EL MANSOURI" if validator.username == "man@sefamar.ma" else "Chadi Ismail"
+        if validator.username not in ["man@sefamar.ma", "chadi@sefamar.ma"]:
+            validator_name = validator.username
+            
+        # 1. Notify the requester
+        Notification.objects.create(
+            user=instance.requester,
+            message=f"Votre demande {instance.order_number} a été validée par {validator_name}."
+        )
+        
+        # 2. Notify the purchasing team
+        purchasing_users = User.objects.filter(profile__role='purchasing')
+        for p_user in purchasing_users:
+            Notification.objects.create(
+                user=p_user,
+                message=f"La demande {instance.order_number} a été validée par {validator_name} et est prête pour achat."
+            )
+            
+        return Response({'success': True, 'validation_badge': f"Validé par {validator_name}"})
 
 import os
 import requests
@@ -282,3 +371,27 @@ class QuoteComparisonHistoryViewSet(viewsets.ModelViewSet):
     queryset = QuoteComparisonHistory.objects.all()
     serializer_class = QuoteComparisonHistorySerializer
     permission_classes = [permissions.AllowAny]
+
+class NotificationViewSet(viewsets.ModelViewSet):
+    queryset = Notification.objects.all().order_by('-created_at')
+    serializer_class = NotificationSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            return self.queryset.filter(user_id=user_id)
+        if self.request.user and self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user)
+        return self.queryset
+
+    @action(detail=False, methods=['post'])
+    def mark_all_read(self, request):
+        user_id = request.data.get('user_id')
+        if user_id:
+            Notification.objects.filter(user_id=user_id).update(is_read=True)
+            return Response({'success': True})
+        if request.user and request.user.is_authenticated:
+            Notification.objects.filter(user=request.user).update(is_read=True)
+            return Response({'success': True})
+        return Response({'error': "ID de l'utilisateur manquant."}, status=400)

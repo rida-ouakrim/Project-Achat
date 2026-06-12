@@ -6,6 +6,7 @@ import FloatingChat from './FloatingChat';
 
 const Layout = () => {
   const userRole = localStorage.getItem('userRole');
+  const userName = localStorage.getItem('userName');
   const location = useLocation();
 
   if (!userRole) {
@@ -16,9 +17,9 @@ const Layout = () => {
   const path = location.pathname.replace('/', '');
   
   const roleRouteMap = {
-    requester: ['requester'],
+    requester: userName === 'chadi@sefamar.ma' ? ['requester', 'validation'] : ['requester'],
     purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
-    director: ['director', 'suppliers', 'sourcing', 'compare-quotes']
+    director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes']
   };
 
   const allowedPaths = roleRouteMap[userRole] || [];

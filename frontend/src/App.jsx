@@ -9,6 +9,7 @@ import DirectorDashboard from './pages/DirectorDashboard';
 import SuppliersPage from './pages/SuppliersPage';
 import SourcingDashboard from './pages/SourcingDashboard';
 import QuoteComparisonDashboard from './pages/QuoteComparisonDashboard';
+import ValidationDashboard from './pages/ValidationDashboard';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
           <Route path="requester" element={<RequesterDashboard />} />
           <Route path="purchasing" element={<PurchasingDashboard />} />
           <Route path="director" element={<DirectorDashboard />} />
+          <Route path="validation" element={<ValidationDashboard />} />
           <Route path="suppliers" element={<SuppliersPage />} />
           <Route path="sourcing" element={<SourcingDashboard />} />
           <Route path="compare-quotes" element={<QuoteComparisonDashboard />} />

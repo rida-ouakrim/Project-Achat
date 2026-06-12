@@ -220,7 +220,7 @@ const PurchasingDashboard = () => {
               <div class="section-title">Émetteur</div>
               <div class="detail-item"><strong>MAN Truck & Bus Maroc</strong></div>
               <div class="detail-item">Demandeur : <span>${req.requester_name}</span></div>
-              <div class="detail-item">Affectation Camion/Service : <span>${req.assignment || 'Non spécifiée'}</span></div>
+              <div class="detail-item">Affectation : <span>${req.assignment || 'Non spécifiée'}</span></div>
             </div>
             <div>
               <div class="section-title">Détails de la Demande</div>
@@ -478,7 +478,8 @@ const PurchasingDashboard = () => {
                   <th>N° Commande</th>
                   <th>Demandeur</th>
                   <th>Produits (Qté)</th>
-                  <th>Service</th>
+                  <th>Affectation</th>
+                  <th>Validation</th>
                   <th>Statut</th>
                   <th>Actions</th>
                 </tr>
@@ -509,7 +510,36 @@ const PurchasingDashboard = () => {
                         ))}
                       </ul>
                     </td>
-                    <td>{req.assignment}</td>
+                    <td style={{ maxWidth: '200px', wordBreak: 'break-all' }}>{req.assignment}</td>
+                    <td>
+                      {req.is_validated ? (
+                        <span className="badge" style={{ 
+                          backgroundColor: '#dcfce7', 
+                          color: '#15803d', 
+                          border: '1px solid #bbf7d0',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          display: 'inline-block'
+                        }}>
+                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name})
+                        </span>
+                      ) : (
+                        <span className="badge" style={{ 
+                          backgroundColor: '#fee2e2', 
+                          color: '#b91c1c', 
+                          border: '1px solid #fecaca',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          display: 'inline-block'
+                        }}>
+                          Non validé
+                        </span>
+                      )}
+                    </td>
                     <td>
                       <span className="badge badge-pending">
                         {req.status}
@@ -949,12 +979,20 @@ const PurchasingDashboard = () => {
                   <p style={{ fontWeight: 600 }}>{detailsRequest.requester_name}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted">Affectation (Service/Camion)</p>
-                  <p style={{ fontWeight: 600 }}>{detailsRequest.assignment}</p>
+                  <p className="text-xs text-muted">Affectation</p>
+                  <p style={{ fontWeight: 600, wordBreak: 'break-all' }}>{detailsRequest.assignment}</p>
                 </div>
                 <div>
                   <p className="text-xs text-muted">Date de Création</p>
                   <p style={{ fontWeight: 600 }}>{detailsRequest.date_created}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Validation</p>
+                  <p style={{ fontWeight: 600 }}>
+                    {detailsRequest.is_validated 
+                      ? `Validé par ${detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi Ismail' : detailsRequest.validated_by_name}` 
+                      : 'Non validé'}
+                  </p>
                 </div>
                 <div>
                   <p className="text-xs text-muted">Statut</p>
