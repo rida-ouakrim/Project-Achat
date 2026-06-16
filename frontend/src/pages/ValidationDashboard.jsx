@@ -13,7 +13,9 @@ const getMediaUrl = (path) => {
 };
 
 const ValidationDashboard = () => {
-  const [requests, setRequests] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [historyRequests, setHistoryRequests] = useState([]);
+  const [activeTab, setActiveTab] = useState('pending'); // 'pending' or 'history'
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [validatingId, setValidatingId] = useState(null);
@@ -29,6 +31,7 @@ const ValidationDashboard = () => {
   const [selectedRequestId, setSelectedRequestId] = useState(null);
 
   const userId = localStorage.getItem('userId');
+  const userName = localStorage.getItem('userName');
 
   const getValidationDelay = (dateStr) => {
     if (!dateStr) return null;
@@ -57,12 +60,20 @@ const ValidationDashboard = () => {
     setLoading(true);
     try {
       const response = await fetchRequests();
-      // Filtrer pour n'afficher que les demandes en attente de validation et non refusées
-      const pendingValidation = response.data.filter(req => !req.is_validated && req.status === 'En attente');
-      setRequests(pendingValidation);
+      const allRequests = response.data || [];
+      
+      // Filtrer pour n'afficher que les demandes en attente de validation
+      const pendingValidation = allRequests.filter(req => !req.is_validated && req.status === 'En attente');
+      setPendingRequests(pendingValidation);
+      
+      // Filtrer pour afficher l'historique des validations par ce validateur
+      const historyValidation = allRequests.filter(req => 
+        req.is_validated && (req.validated_by === parseInt(userId) || req.validated_by_name === userName)
+      );
+      setHistoryRequests(historyValidation);
     } catch (err) {
       console.error(err);
-      setError("Impossible de charger les demandes à valider.");
+      setError("Impossible de charger les demandes.");
     } finally {
       setLoading(false);
     }
@@ -131,87 +142,289 @@ const ValidationDashboard = () => {
         </div>
       )}
 
-      <div className="card accent-warning">
-        <h3>Demandes en attente de validation</h3>
-        
-        {loading ? (
-          <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement des demandes...</p>
-        ) : (
-          <div className="table-container mt-4">
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>N° Commande</th>
-                  <th>Date</th>
-                  <th>Demandeur</th>
-                  <th>Articles</th>
-                  <th>Affectation</th>
-                  <th>Statut</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {requests.map(req => (
-                  <tr key={req.id}>
-                    <td style={{ fontWeight: 500 }}>
-                      <div>{req.order_number}</div>
-                      {req.request_pdf && (
-                        <a 
-                          href={getMediaUrl(req.request_pdf)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
-                          style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
-                        >
-                          <FileText size={12} />
-                          <span>Dossier PDF</span>
-                        </a>
-                      )}
-                    </td>
-                    <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
-                      <div style={{ fontWeight: 500 }}>
-                        {req.date_created ? (() => {
-                          const parts = req.date_created.split('-');
-                          return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : req.date_created;
-                        })() : '-'}
-                      </div>
-                      {(() => {
-                        const delay = getValidationDelay(req.date_created);
-                        if (delay === null) return null;
-                        const delayText = delay === 0 ? "Aujourd'hui" : delay === 1 ? "Hier" : `Envoyée il y a ${delay} jours`;
-                        const isDelayed = delay >= 2;
-                        return (
-                          <div style={{ 
-                            fontSize: '0.72rem', 
-                            color: isDelayed ? '#ef4444' : '#64748b', 
-                            fontWeight: isDelayed ? 600 : 400,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.15rem',
-                            marginTop: '0.25rem'
-                          }}>
-                            {isDelayed && <span style={{ fontSize: '0.8rem' }}>⚠️</span>}
-                            <span>{delayText}</span>
-                          </div>
-                        );
-                      })()}
-                    </td>
-                    <td style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{req.requester_name}</td>
-                    <td>
-                      <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
-                        {req.items && req.items.map((it, idx) => (
-                          <li key={idx}><strong>{it.qty}x</strong> {it.product}</li>
-                        ))}
-                      </ul>
-                    </td>
-                    <td style={{ maxWidth: '180px', wordBreak: 'break-all' }}>{req.assignment || '-'}</td>
-                    <td>
-                      <span className="badge badge-pending">
-                        Non validé
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div className="flex gap-2 justify-center">
+      {/* Tabs System */}
+      <div style={{
+        display: 'flex',
+        gap: '0.5rem',
+        borderBottom: '1px solid var(--color-border)',
+        marginBottom: '1.5rem',
+        paddingBottom: '2px'
+      }}>
+        <button
+          onClick={() => setActiveTab('pending')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'pending' ? '3px solid var(--color-warning)' : '3px solid transparent',
+            color: activeTab === 'pending' ? 'var(--color-warning)' : 'var(--color-text-muted)',
+            fontWeight: 700,
+            padding: '0.75rem 1.25rem',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            transition: 'var(--transition)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          <span>📥 À valider</span>
+          <span style={{
+            backgroundColor: activeTab === 'pending' ? 'var(--color-warning)' : 'var(--color-border)',
+            color: activeTab === 'pending' ? '#fff' : 'var(--color-text-muted)',
+            fontSize: '0.75rem',
+            padding: '0.1rem 0.5rem',
+            borderRadius: 'var(--radius-full)',
+            fontWeight: 700
+          }}>
+            {pendingRequests.length}
+          </span>
+        </button>
+        <button
+          onClick={() => setActiveTab('history')}
+          style={{
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'history' ? '3px solid var(--color-success)' : '3px solid transparent',
+            color: activeTab === 'history' ? 'var(--color-success)' : 'var(--color-text-muted)',
+            fontWeight: 700,
+            padding: '0.75rem 1.25rem',
+            cursor: 'pointer',
+            fontSize: '0.875rem',
+            transition: 'var(--transition)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}
+        >
+          <span>📜 Historique des validations</span>
+          <span style={{
+            backgroundColor: activeTab === 'history' ? 'var(--color-success)' : 'var(--color-border)',
+            color: activeTab === 'history' ? '#fff' : 'var(--color-text-muted)',
+            fontSize: '0.75rem',
+            padding: '0.1rem 0.5rem',
+            borderRadius: 'var(--radius-full)',
+            fontWeight: 700
+          }}>
+            {historyRequests.length}
+          </span>
+        </button>
+      </div>
+
+      {activeTab === 'pending' ? (
+        <div className="card accent-warning">
+          <h3>Demandes en attente de validation</h3>
+          
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement des demandes...</p>
+          ) : (
+            <div className="table-container mt-4">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>N° Commande</th>
+                    <th>Date</th>
+                    <th>Demandeur</th>
+                    <th>Articles</th>
+                    <th>Affectation</th>
+                    <th>Statut</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRequests.map(req => (
+                    <tr key={req.id}>
+                      <td style={{ fontWeight: 500 }}>
+                        <div>{req.order_number}</div>
+                        {req.request_pdf && (
+                          <a 
+                            href={getMediaUrl(req.request_pdf)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                            style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                          >
+                            <FileText size={12} />
+                            <span>Dossier PDF</span>
+                          </a>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 500 }}>
+                          {req.date_created ? (() => {
+                            const parts = req.date_created.split('-');
+                            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : req.date_created;
+                          })() : '-'}
+                        </div>
+                        {(() => {
+                          const delay = getValidationDelay(req.date_created);
+                          if (delay === null) return null;
+                          const delayText = delay === 0 ? "Aujourd'hui" : delay === 1 ? "Hier" : `Envoyée il y a ${delay} jours`;
+                          const isDelayed = delay >= 2;
+                          return (
+                            <div style={{ 
+                              fontSize: '0.72rem', 
+                              color: isDelayed ? '#ef4444' : '#64748b', 
+                              fontWeight: isDelayed ? 600 : 400,
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.15rem',
+                              marginTop: '0.25rem'
+                            }}>
+                              {isDelayed && <span style={{ fontSize: '0.8rem' }}>⚠️</span>}
+                              <span>{delayText}</span>
+                            </div>
+                          );
+                        })()}
+                      </td>
+                      <td style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{req.requester_name}</td>
+                      <td>
+                        <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                          {req.items && req.items.map((it, idx) => (
+                            <li key={idx}><strong>{it.qty}x</strong> {it.product}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td style={{ maxWidth: '180px', wordBreak: 'break-all' }}>{req.assignment || '-'}</td>
+                      <td>
+                        <span className="badge badge-pending">
+                          Non validé
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div className="flex gap-2 justify-center">
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.4rem 0.6rem' }}
+                            onClick={() => {
+                              setDetailsRequest(req);
+                              setIsDetailsModalOpen(true);
+                            }}
+                            title="Voir les détails"
+                          >
+                            <Eye size={14} />
+                          </button>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ 
+                              color: '#ef4444', 
+                              borderColor: '#fee2e2', 
+                              backgroundColor: '#fff5f5', 
+                              padding: '0.4rem 0.8rem',
+                              fontSize: '0.8125rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                            onClick={() => {
+                              setSelectedRequestId(req.id);
+                              setIsRefusalModalOpen(true);
+                            }}
+                            disabled={validatingId !== null || refusingId !== null}
+                          >
+                            <X size={14} />
+                            Refuser
+                          </button>
+                          <button 
+                            className="btn btn-primary" 
+                            style={{ 
+                              backgroundColor: 'var(--color-success)', 
+                              borderColor: 'var(--color-success)', 
+                              padding: '0.4rem 0.8rem',
+                              fontSize: '0.8125rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem'
+                            }}
+                            onClick={() => handleValidate(req.id)}
+                            disabled={validatingId !== null || refusingId !== null}
+                          >
+                            <Check size={14} />
+                            {validatingId === req.id ? 'Validation...' : 'Valider'}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {pendingRequests.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '4rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
+                          <CheckCircle size={36} style={{ color: 'var(--color-success)' }} />
+                          <span style={{ fontWeight: 500 }}>Félicitations ! Toutes les demandes ont été validées.</span>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="card accent-success">
+          <h3>Historique de vos validations</h3>
+          
+          {loading ? (
+            <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement de l'historique...</p>
+          ) : (
+            <div className="table-container mt-4">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>N° Commande</th>
+                    <th>Date demande</th>
+                    <th>Demandeur</th>
+                    <th>Articles</th>
+                    <th>Affectation</th>
+                    <th>Statut Achat</th>
+                    <th style={{ textAlign: 'center' }}>Détails</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyRequests.map(req => (
+                    <tr key={req.id}>
+                      <td style={{ fontWeight: 500 }}>
+                        <div>{req.order_number}</div>
+                        {req.request_pdf && (
+                          <a 
+                            href={getMediaUrl(req.request_pdf)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                            style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                          >
+                            <FileText size={12} />
+                            <span>Dossier PDF</span>
+                          </a>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
+                        <div style={{ fontWeight: 500 }}>
+                          {req.date_created ? (() => {
+                            const parts = req.date_created.split('-');
+                            return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : req.date_created;
+                          })() : '-'}
+                        </div>
+                      </td>
+                      <td style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{req.requester_name}</td>
+                      <td>
+                        <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
+                          {req.items && req.items.map((it, idx) => (
+                            <li key={idx}><strong>{it.qty}x</strong> {it.product}</li>
+                          ))}
+                        </ul>
+                      </td>
+                      <td style={{ maxWidth: '180px', wordBreak: 'break-all' }}>{req.assignment || '-'}</td>
+                      <td>
+                        <span className={`badge badge-${
+                          req.status === 'En attente' ? 'approved' : 
+                          req.status === 'Commandé' ? 'ordered' : 
+                          req.status === 'Reçu' ? 'received' : 'rejected'
+                        }`}>
+                          {req.status === 'En attente' ? 'Validé' : req.status}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
                         <button 
                           className="btn btn-outline" 
                           style={{ padding: '0.4rem 0.6rem' }}
@@ -223,63 +436,22 @@ const ValidationDashboard = () => {
                         >
                           <Eye size={14} />
                         </button>
-                        <button 
-                          className="btn btn-outline" 
-                          style={{ 
-                            color: '#ef4444', 
-                            borderColor: '#fee2e2', 
-                            backgroundColor: '#fff5f5', 
-                            padding: '0.4rem 0.8rem',
-                            fontSize: '0.8125rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem'
-                          }}
-                          onClick={() => {
-                            setSelectedRequestId(req.id);
-                            setIsRefusalModalOpen(true);
-                          }}
-                          disabled={validatingId !== null || refusingId !== null}
-                        >
-                          <X size={14} />
-                          Refuser
-                        </button>
-                        <button 
-                          className="btn btn-primary" 
-                          style={{ 
-                            backgroundColor: 'var(--color-success)', 
-                            borderColor: 'var(--color-success)', 
-                            padding: '0.4rem 0.8rem',
-                            fontSize: '0.8125rem',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '0.25rem'
-                          }}
-                          onClick={() => handleValidate(req.id)}
-                          disabled={validatingId !== null || refusingId !== null}
-                        >
-                          <Check size={14} />
-                          {validatingId === req.id ? 'Validation...' : 'Valider'}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-                {requests.length === 0 && (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '4rem' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', color: 'var(--color-text-muted)' }}>
-                        <CheckCircle size={36} style={{ color: 'var(--color-success)' }} />
-                        <span style={{ fontWeight: 500 }}>Félicitations ! Toutes les demandes ont été validées.</span>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+                      </td>
+                    </tr>
+                  ))}
+                  {historyRequests.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
+                        Aucune demande validée pour le moment.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Modal - Détails de la demande */}
       {isDetailsModalOpen && detailsRequest && (
