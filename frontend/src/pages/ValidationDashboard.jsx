@@ -480,9 +480,23 @@ const ValidationDashboard = () => {
                 <div>
                   <p className="text-xs text-muted">Validation</p>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <span className="badge badge-pending">
-                      Non validé
-                    </span>
+                    {detailsRequest.is_validated ? (
+                      <span className="badge" style={{ 
+                        backgroundColor: '#dcfce7', 
+                        color: '#15803d', 
+                        border: '1px solid #bbf7d0',
+                        padding: '0.25rem 0.5rem',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}>
+                        Validé ({detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : detailsRequest.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : detailsRequest.validated_by_name})
+                      </span>
+                    ) : (
+                      <span className="badge badge-pending">
+                        Non validé
+                      </span>
+                    )}
                   </div>
                 </div>
                 <div>

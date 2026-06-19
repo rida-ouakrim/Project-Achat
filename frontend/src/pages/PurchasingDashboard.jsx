@@ -523,7 +523,7 @@ const PurchasingDashboard = () => {
                           fontWeight: 600,
                           display: 'inline-block'
                         }}>
-                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name})
+                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name})
                         </span>
                       ) : (
                         <span className="badge" style={{ 
@@ -990,7 +990,7 @@ const PurchasingDashboard = () => {
                   <p className="text-xs text-muted">Validation</p>
                   <p style={{ fontWeight: 600 }}>
                     {detailsRequest.is_validated 
-                      ? `Validé par ${detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi Ismail' : detailsRequest.validated_by_name}` 
+                      ? `Validé par ${detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi Ismail' : detailsRequest.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : detailsRequest.validated_by_name}` 
                       : 'Non validé'}
                   </p>
                 </div>

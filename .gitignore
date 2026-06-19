@@ -22,3 +22,7 @@ build/
 .docker-compose.override.yml
 data/
 postgres_data/
+
+# Scripts contenant des informations sensibles
+inject_users.py
+backend/inject_users.py

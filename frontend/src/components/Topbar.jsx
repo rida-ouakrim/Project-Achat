@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, UserCircle, LogOut, Check } from 'lucide-react';
-import { fetchNotifications, markAllNotificationsRead } from '../api';
+import { Bell, UserCircle, LogOut, Check, Key } from 'lucide-react';
+import { fetchNotifications, markAllNotificationsRead, resetUserPassword } from '../api';
 import toast from 'react-hot-toast';
 
 const Topbar = () => {
@@ -12,6 +12,25 @@ const Topbar = () => {
   const userId = localStorage.getItem('userId');
   const userName = localStorage.getItem('userName');
   const userRole = localStorage.getItem('userRole');
+
+  // États pour modifier le mot de passe personnel
+  const [isChangePassModalOpen, setIsChangePassModalOpen] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    if (!newPassword.trim() || !userId) return;
+    
+    try {
+      await resetUserPassword(userId, newPassword.trim());
+      toast.success("Votre mot de passe a été modifié avec succès !");
+      setIsChangePassModalOpen(false);
+      setNewPassword('');
+    } catch (err) {
+      console.error(err);
+      toast.error("Échec de la modification du mot de passe.");
+    }
+  };
 
   const loadNotifications = async () => {
     if (!userId) return;
@@ -215,11 +234,19 @@ const Topbar = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <UserCircle size={32} style={{ color: 'var(--color-primary)' }} />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-main)' }}>
+            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: 'var(--color-text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
               {userName || 'Utilisateur'}
+              <button 
+                onClick={() => setIsChangePassModalOpen(true)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)', display: 'inline-flex', padding: '2px' }}
+                title="Modifier mon mot de passe"
+              >
+                <Key size={14} />
+              </button>
             </span>
             <span style={{ fontSize: '0.75rem' }}>
               {userName === 'chadi@sefamar.ma' ? 'Validateur Spécial' :
+               userName === 'g.benelhassane@sefamar.ma' ? 'DAF (Validateur)' :
                userRole === 'requester' ? 'Demandeur' : 
                userRole === 'purchasing' ? 'Équipe Achats' : 'Directeur (DG)'}
             </span>
@@ -236,6 +263,66 @@ const Topbar = () => {
           <LogOut size={20} />
         </button>
       </div>
+
+      {/* Modal - Modifier mon mot de passe */}
+      {isChangePassModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '400px' }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <div style={{ backgroundColor: 'var(--color-primary-light)', color: 'var(--color-primary)', padding: '0.5rem', borderRadius: 'var(--radius-md)' }}>
+                  <Key size={20} />
+                </div>
+                <h3 style={{ margin: 0, color: 'var(--color-text-main)' }}>Modifier mon Mot de Passe</h3>
+              </div>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => {
+                  setIsChangePassModalOpen(false);
+                  setNewPassword('');
+                }} 
+                style={{ padding: '0.25rem', border: 'none', fontSize: '1.5rem', lineHeight: 1 }}
+              >
+                &times;
+              </button>
+            </div>
+            <form onSubmit={handleChangePassword}>
+              <p style={{ marginBottom: '1.5rem', fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+                Saisissez votre nouveau mot de passe pour le compte <strong>{userName}</strong>.
+              </p>
+              
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Nouveau mot de passe</label>
+                <input 
+                  type="password" 
+                  className="form-input" 
+                  placeholder="Entrez le nouveau mot de passe..."
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 mt-6">
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  onClick={() => {
+                    setIsChangePassModalOpen(false);
+                    setNewPassword('');
+                  }}
+                >
+                  Annuler
+                </button>
+                <button type="submit" className="btn btn-primary">
+                  Enregistrer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </header>
   );
 };

@@ -103,13 +103,18 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         instance = serializer.save()
         
         # Check if the requester is a validator (auto-validation)
-        if instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma']:
+        if instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma']:
             instance.is_validated = True
             instance.validated_by = instance.requester
             instance.save()
             
             # Display name logic
-            validator_name = "Mme EL MANSOURI" if instance.requester.username == "man@sefamar.ma" else "Chadi Ismail"
+            if instance.requester.username == "man@sefamar.ma":
+                validator_name = "Mme EL MANSOURI"
+            elif instance.requester.username == "chadi@sefamar.ma":
+                validator_name = "Chadi Ismail"
+            else:
+                validator_name = "Mme BENELHASSANE"
             
             # Notify the purchasing team
             purchasing_users = User.objects.filter(profile__role='purchasing')
@@ -119,8 +124,8 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     message=f"La demande {instance.order_number} de {validator_name} a été validée automatiquement et est prête pour achat."
                 )
         else:
-            # Notify validators: Mme EL MANSOURI and Chadi Ismail
-            validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma'])
+            # Notify validators: Mme EL MANSOURI, Chadi Ismail and Mme BENELHASSANE
+            validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
             for val in validators:
                 Notification.objects.create(
                     user=val,
@@ -195,8 +200,13 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         instance.save()
         
         # Display name logic
-        validator_name = "Mme EL MANSOURI" if validator.username == "man@sefamar.ma" else "Chadi Ismail"
-        if validator.username not in ["man@sefamar.ma", "chadi@sefamar.ma"]:
+        if validator.username == "man@sefamar.ma":
+            validator_name = "Mme EL MANSOURI"
+        elif validator.username == "chadi@sefamar.ma":
+            validator_name = "Chadi Ismail"
+        elif validator.username == "g.benelhassane@sefamar.ma":
+            validator_name = "Mme BENELHASSANE"
+        else:
             validator_name = validator.username
             
         # 1. Notify the requester
