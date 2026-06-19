@@ -40,7 +40,7 @@ const Sidebar = () => {
           </NavLink>
         )}
 
-        {(userRole === 'director' || userName === 'chadi@sefamar.ma') && (
+        {(userRole === 'director' || ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'].includes(userName)) && (
           <NavLink to="/validation" className={({ isActive }) => `sidebar-link ${isActive ? 'active-validation' : ''}`}>
             <CheckSquare size={18} />
             Validation

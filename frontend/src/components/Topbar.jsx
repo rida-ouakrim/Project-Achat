@@ -244,12 +244,6 @@ const Topbar = () => {
                 <Key size={14} />
               </button>
             </span>
-            <span style={{ fontSize: '0.75rem' }}>
-              {userName === 'chadi@sefamar.ma' ? 'Validateur Spécial' :
-               userName === 'g.benelhassane@sefamar.ma' ? 'DAF (Validateur)' :
-               userRole === 'requester' ? 'Demandeur' : 
-               userRole === 'purchasing' ? 'Équipe Achats' : 'Directeur (DG)'}
-            </span>
           </div>
         </div>
         <button 

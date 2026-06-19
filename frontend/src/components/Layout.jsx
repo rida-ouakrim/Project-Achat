@@ -17,7 +17,7 @@ const Layout = () => {
   const path = location.pathname.replace('/', '');
   
   const roleRouteMap = {
-    requester: userName === 'chadi@sefamar.ma' ? ['requester', 'validation'] : ['requester'],
+    requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'].includes(userName) ? ['requester', 'validation'] : ['requester'],
     purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
     director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes']
   };
