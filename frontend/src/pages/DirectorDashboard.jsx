@@ -134,16 +134,30 @@ const DirectorDashboard = () => {
             const unitPrice = parseFloat(it.price.replace(/[^0-9.]/g, '')) || 0;
             const qty = parseInt(it.qty, 10) || 1;
             const total = unitPrice * qty;
-            suppliers[it.supplier] = (suppliers[it.supplier] || 0) + total;
+            // Normaliser le nom du fournisseur (sans espaces superflus, en majuscules) pour éviter les doublons
+            const normSupplier = it.supplier.trim().toUpperCase();
+            suppliers[normSupplier] = (suppliers[normSupplier] || 0) + total;
           }
         });
       }
     });
 
-    return Object.keys(suppliers).map(sup => ({
-      name: sup,
-      value: suppliers[sup]
-    }));
+    const sorted = Object.keys(suppliers)
+      .map(sup => ({ name: sup, value: suppliers[sup] }))
+      .sort((a, b) => b.value - a.value);
+
+    // Conserver les 5 plus grands fournisseurs et regrouper les autres sous "AUTRES"
+    if (sorted.length > 5) {
+      const top5 = sorted.slice(0, 5);
+      const others = sorted.slice(5);
+      const othersValue = others.reduce((sum, item) => sum + item.value, 0);
+      if (othersValue > 0) {
+        top5.push({ name: `AUTRES (${others.length})`, value: othersValue });
+      }
+      return top5;
+    }
+
+    return sorted;
   };
 
   const dataPie = getSupplierData();
@@ -309,27 +323,55 @@ const DirectorDashboard = () => {
               </div>
             </div>
 
-            <div className="card accent-primary" style={{ flex: 1 }}>
+            <div className="card accent-primary" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <h3>Répartition Budgétaire Fournisseurs</h3>
-              <div style={{ height: '300px', marginTop: '1rem' }}>
-                {dataPie.length === 0 ? (
-                  <p style={{ textAlign: 'center', paddingTop: '6rem', color: 'var(--color-text-muted)' }}>
-                    Aucun fournisseur enregistré pour le moment.
-                  </p>
-                ) : (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie data={dataPie} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                        {dataPie.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => `${value.toLocaleString('fr-FR')} MAD`} />
-                      <Legend verticalAlign="bottom" height={36} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
+              {dataPie.length === 0 ? (
+                <p style={{ textAlign: 'center', paddingTop: '6rem', color: 'var(--color-text-muted)' }}>
+                  Aucun fournisseur enregistré pour le moment.
+                </p>
+              ) : (
+                <div style={{ height: '300px', marginTop: '0.5rem', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ flex: 1, minHeight: '170px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={dataPie} innerRadius={45} outerRadius={65} paddingAngle={4} dataKey="value">
+                          {dataPie.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `${Number(value).toLocaleString('fr-FR')} MAD`} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Légende personnalisée scrollable et élégante */}
+                  <div style={{
+                    maxHeight: '115px',
+                    overflowY: 'auto',
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.35rem 0.5rem',
+                    padding: '0.5rem 0.75rem',
+                    backgroundColor: 'var(--color-bg)',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: '0.725rem',
+                    border: '1px solid var(--color-border)',
+                    marginTop: '0.25rem'
+                  }}>
+                    {dataPie.map((entry, index) => {
+                      const totalVal = dataPie.reduce((s, d) => s + d.value, 0);
+                      const percent = totalVal > 0 ? Math.round((entry.value / totalVal) * 100) : 0;
+                      return (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden', whiteSpace: 'nowrap' }} title={`${entry.name}: ${entry.value.toLocaleString('fr-FR')} MAD (${percent}%)`}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: COLORS[index % COLORS.length], flexShrink: 0 }} />
+                          <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', color: '#334155' }}>{entry.name}</span>
+                          <span style={{ color: 'var(--color-text-muted)', marginLeft: 'auto', fontSize: '0.675rem', fontWeight: 500 }}>{percent}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
