@@ -47,6 +47,7 @@ const DirectorDashboard = () => {
   // States for creating a new Requester (Moved to Director side)
   const [newUsername, setNewUsername] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [newUserRole, setNewUserRole] = useState('requester');
   const [userSuccessMsg, setUserSuccessMsg] = useState('');
   const [userErrorMsg, setUserErrorMsg] = useState('');
   const [creatingUser, setCreatingUser] = useState(false);
@@ -231,10 +232,10 @@ const DirectorDashboard = () => {
       const payload = {
         username: newUsername.trim(),
         password: newPassword,
-        role: 'requester'
+        role: newUserRole
       };
       await createUser(payload);
-      setUserSuccessMsg(`Demandeur "${newUsername}" créé avec succès !`);
+      setUserSuccessMsg(`Utilisateur "${newUsername}" créé avec succès !`);
       setNewUsername('');
       setNewPassword('');
       
@@ -600,13 +601,13 @@ const DirectorDashboard = () => {
           </div>
 
           <div className="flex gap-4" style={{ alignItems: 'flex-start', width: '100%' }}>
-            {/* Créer un Demandeur */}
+            {/* Créer un Utilisateur */}
             <div className="card accent-success" style={{ flex: 1, marginBottom: 0 }}>
               <div className="flex items-center gap-2 mb-2" style={{ color: 'var(--color-primary)' }}>
                 <UserPlus size={20} />
-                <h3 style={{ margin: 0 }}>Créer un Demandeur</h3>
+                <h3 style={{ margin: 0 }}>Créer un Utilisateur</h3>
               </div>
-              <p className="text-xs text-muted mb-4">Ajouter un nouveau compte de demandeur à l'application.</p>
+              <p className="text-xs text-muted mb-4">Ajouter un nouveau compte utilisateur à la plateforme.</p>
               
               {userSuccessMsg && (
                 <p style={{ fontSize: '0.75rem', color: 'var(--color-success)', backgroundColor: '#ecfdf5', padding: '0.5rem', borderRadius: 'var(--radius-sm)', marginBottom: '1rem' }}>
@@ -621,17 +622,31 @@ const DirectorDashboard = () => {
 
               <form onSubmit={handleCreateRequester}>
                 <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Nom d'utilisateur</label>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Nom d'utilisateur (Email / Identifiant)</label>
                   <input 
                     type="text" 
                     className="form-input" 
-                    placeholder="Ex: ali_new" 
+                    placeholder="Ex: Ahmed@sefacar.ma" 
                     style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem' }}
                     value={newUsername}
                     onChange={(e) => setNewUsername(e.target.value)}
                     required
                     disabled={creatingUser}
                   />
+                </div>
+                <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Rôle & Accès</label>
+                  <select 
+                    className="form-input" 
+                    style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', backgroundColor: 'white' }}
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value)}
+                    disabled={creatingUser}
+                  >
+                    <option value="requester">Demandeur (MAN)</option>
+                    <option value="purchasing">Acheteur (SEFAMAR)</option>
+                    <option value="ai_tools">Outils IA Uniquement (Filiale SEFACAR)</option>
+                  </select>
                 </div>
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
                   <label className="form-label" style={{ fontSize: '0.75rem' }}>Mot de passe</label>
