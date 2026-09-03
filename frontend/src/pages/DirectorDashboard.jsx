@@ -677,10 +677,12 @@ const DirectorDashboard = () => {
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <span className={`badge badge-${
                           u.profile?.role === 'requester' ? 'pending' : 
-                          u.profile?.role === 'purchasing' ? 'ordered' : 'received'
+                          u.profile?.role === 'purchasing' ? 'ordered' : 
+                          u.profile?.role === 'ai_tools' ? 'pending' : 'received'
                         }`} style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}>
                           {u.profile?.role === 'requester' ? 'Demandeur' : 
-                           u.profile?.role === 'purchasing' ? 'Acheteur' : 'Directeur'}
+                           u.profile?.role === 'purchasing' ? 'Acheteur' : 
+                           u.profile?.role === 'ai_tools' ? 'Outils IA (Filiale)' : 'Directeur'}
                         </span>
                         <button 
                           onClick={() => openPasswordResetModal(u)} 

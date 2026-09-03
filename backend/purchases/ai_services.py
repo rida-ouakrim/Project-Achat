@@ -199,3 +199,35 @@ def compare_quotes(files_data, instructions=""):
     except Exception as e:
         print(f"Vertex AI Compare Error: {e}")
         return {"success": False, "error": str(e)}
+
+def get_account_for_family(family_code):
+    """Resolve accounting account for a family code using fallback mapping and Vertex AI.
+    Returns (account_code, libelle).
+    """
+    fallback_mapping = {
+        '1': ('61223', "Achats de fournitures d'atelier et de magasin"),
+        '2': ('61223', "Achats de fournitures d'atelier et de magasin"),
+        '3': ('61223', "Achats de fournitures d'atelier et de magasin"),
+        '4': ('61223', "Achats de fournitures d'atelier et de magasin"),
+        '6': ('61425', "Transports sur achats"),
+        '92': ('61673', "Droits d'enregistrement et de timbre"),
+        '100': ('61223', "Achats de fournitures d'atelier et de magasin"),
+        '101': ('61223', "Achats de fournitures d'atelier et de magasin"),
+    }
+    if family_code in fallback_mapping:
+        return fallback_mapping[family_code]
+    try:
+        model = GenerativeModel("gemini-2.5-flash")
+        prompt = f"""
+        Vous êtes un expert comptable marocain. Donnez le code du compte comptable et le libellé pour la famille d'article suivante : {family_code}. Retournez uniquement du JSON: {{\"code\": \"...\", \"libelle\": \"...\"}}.
+        """
+        response = model.generate_content(prompt, generation_config={"temperature": 0.2})
+        import re, json as _json
+        text = response.text.strip()
+        match = re.search(r'\{.*\}', text, re.DOTALL)
+        if match:
+            data = _json.loads(match.group(0))
+            return data.get('code', '61223'), data.get('libelle', "Achats de fournitures d'atelier et de magasin")
+    except Exception as e:
+        print(f"Vertex AI account mapping error for family {family_code}: {e}")
+    return '61223', "Achats de fournitures d'atelier et de magasin"

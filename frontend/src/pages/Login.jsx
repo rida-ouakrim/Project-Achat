@@ -35,6 +35,8 @@ const Login = () => {
         if (role === 'requester') navigate('/requester');
         else if (role === 'purchasing') navigate('/purchasing');
         else if (role === 'director') navigate('/director');
+        else if (role === 'ai_tools') navigate('/sourcing');
+        else navigate('/sourcing');
       }
     } catch (err) {
       console.error("Erreur Auth:", err);

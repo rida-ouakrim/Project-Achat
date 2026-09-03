@@ -19,12 +19,13 @@ const Layout = () => {
   const roleRouteMap = {
     requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'].includes(userName) ? ['requester', 'validation'] : ['requester'],
     purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
-    director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes']
+    director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'],
+    ai_tools: ['sourcing', 'compare-quotes']
   };
 
-  const allowedPaths = roleRouteMap[userRole] || [];
+  const allowedPaths = roleRouteMap[userRole] || ['sourcing'];
   if (path && !allowedPaths.includes(path)) {
-    return <Navigate to={`/${userRole}`} replace />;
+    return <Navigate to={allowedPaths[0] ? `/${allowedPaths[0]}` : '/sourcing'} replace />;
   }
 
   return (
@@ -36,8 +37,8 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
-      {/* Injecter le Chatbot intelligent pour le Directeur et l'Équipe Achats */}
-      {(userRole === 'director' || userRole === 'purchasing') && <FloatingChat />}
+      {/* Injecter le Chatbot intelligent pour le Directeur, l'Équipe Achats et Outils IA */}
+      {(userRole === 'director' || userRole === 'purchasing' || userRole === 'ai_tools') && <FloatingChat />}
     </div>
   );
 };

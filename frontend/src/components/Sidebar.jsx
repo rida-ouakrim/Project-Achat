@@ -59,7 +59,7 @@ const Sidebar = () => {
           </>
         )}
 
-        {(userRole === 'purchasing' || userRole === 'director') && (
+        {(userRole === 'purchasing' || userRole === 'director' || userRole === 'ai_tools') && (
           <>
             <div className="sidebar-section-divider">
               Outils IA
