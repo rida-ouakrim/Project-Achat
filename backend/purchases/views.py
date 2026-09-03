@@ -302,15 +302,24 @@ from .ai_services import get_sourcing_suggestions, extract_text_from_file, compa
 def ai_sourcing(request):
     product = request.data.get('product')
     location = request.data.get('location', 'Casablanca')
+    user_id = request.data.get('user_id')
     
     if not product:
         return Response({'success': False, 'error': 'Le produit est requis.'}, status=400)
         
     result = get_sourcing_suggestions(product, location)
     if result.get('success'):
-        # Save to history
+        # Save to history for the logged in user
         try:
+            user = request.user if request.user and request.user.is_authenticated else None
+            if not user and user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    pass
+
             SourcingHistory.objects.create(
+                user=user,
                 product=product,
                 location=location,
                 results=result.get('data', [])
@@ -323,9 +332,17 @@ def ai_sourcing(request):
         return Response(result, status=500)
 
 class SourcingHistoryViewSet(viewsets.ModelViewSet):
-    queryset = SourcingHistory.objects.all()
+    queryset = SourcingHistory.objects.all().order_by('-created_at')
     serializer_class = SourcingHistorySerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            return self.queryset.filter(user_id=user_id)
+        if self.request.user and self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user)
+        return self.queryset
 
 @api_view(['POST'])
 def ai_compare_quotes(request):
@@ -333,6 +350,8 @@ def ai_compare_quotes(request):
 
     files = request.FILES.getlist('files')
     instructions = request.data.get('instructions', '')
+    user_id = request.data.get('user_id')
+
     if not files:
         return Response({'success': False, 'error': 'Aucun fichier fourni.'}, status=400)
         
@@ -365,8 +384,16 @@ def ai_compare_quotes(request):
     result = compare_quotes(files_data, instructions=instructions)
     if result.get('success'):
         try:
+            user = request.user if request.user and request.user.is_authenticated else None
+            if not user and user_id:
+                try:
+                    user = User.objects.get(id=user_id)
+                except User.DoesNotExist:
+                    pass
+
             # Enregistrer dans l'historique
             QuoteComparisonHistory.objects.create(
+                user=user,
                 filenames=[f.name for f in files],
                 markdown_result=result.get('markdown', '')
             )
@@ -378,9 +405,17 @@ def ai_compare_quotes(request):
         return Response(result, status=500)
 
 class QuoteComparisonHistoryViewSet(viewsets.ModelViewSet):
-    queryset = QuoteComparisonHistory.objects.all()
+    queryset = QuoteComparisonHistory.objects.all().order_by('-created_at')
     serializer_class = QuoteComparisonHistorySerializer
     permission_classes = [permissions.AllowAny]
+
+    def get_queryset(self):
+        user_id = self.request.query_params.get('user_id')
+        if user_id:
+            return self.queryset.filter(user_id=user_id)
+        if self.request.user and self.request.user.is_authenticated:
+            return self.queryset.filter(user=self.request.user)
+        return self.queryset
 
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all().order_by('-created_at')

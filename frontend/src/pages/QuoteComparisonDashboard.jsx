@@ -52,10 +52,12 @@ const QuoteComparisonDashboard = () => {
     };
   }, [loading]);
 
+  const userId = localStorage.getItem('userId');
+
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const response = await fetchQuoteComparisonHistory();
+      const response = await fetchQuoteComparisonHistory(userId);
       setHistoryList(response.data || []);
     } catch (err) {
       console.error("Error fetching history:", err);
@@ -219,6 +221,9 @@ const QuoteComparisonDashboard = () => {
     });
     if (instructions.trim()) {
       formData.append('instructions', instructions.trim());
+    }
+    if (userId) {
+      formData.append('user_id', userId);
     }
 
     try {

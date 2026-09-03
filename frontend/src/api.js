@@ -92,8 +92,8 @@ export const deleteCatalog = (id) => API.delete(`catalog/${id}/`);
 
 export const sendMessageToAI = (message) => API.post('chat/', { message });
 
-export const fetchSourcingHistory = () => API.get('sourcing-history/');
-export const fetchQuoteComparisonHistory = () => API.get('quote-comparison-history/');
+export const fetchSourcingHistory = (userId) => API.get(userId ? `sourcing-history/?user_id=${userId}` : 'sourcing-history/');
+export const fetchQuoteComparisonHistory = (userId) => API.get(userId ? `quote-comparison-history/?user_id=${userId}` : 'quote-comparison-history/');
 export const deleteSourcingHistory = (id) => API.delete(`sourcing-history/${id}/`);
 export const deleteQuoteComparisonHistory = (id) => API.delete(`quote-comparison-history/${id}/`);
 

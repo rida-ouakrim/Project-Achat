@@ -51,11 +51,13 @@ const SourcingDashboard = () => {
     };
   }, [loading]);
 
+  const userId = localStorage.getItem('userId');
+
   // Load history list
   const loadHistory = async () => {
     setLoadingHistory(true);
     try {
-      const response = await fetchSourcingHistory();
+      const response = await fetchSourcingHistory(userId);
       setHistoryList(response.data || []);
     } catch (err) {
       console.error("Error fetching history:", err);
@@ -105,7 +107,7 @@ const SourcingDashboard = () => {
     setLoading(true);
     setResults(null);
     try {
-      const response = await API.post('ai/sourcing/', { product, location });
+      const response = await API.post('ai/sourcing/', { product, location, user_id: userId });
       if (response.data.success) {
         setResults(response.data.data);
         toast.success("Recherche terminée avec succès !");

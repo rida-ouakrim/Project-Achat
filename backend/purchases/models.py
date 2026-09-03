@@ -82,6 +82,7 @@ class SupplierCatalog(models.Model):
         return f"{self.supplier_name} -> {self.product_name} ({self.price})"
 
 class SourcingHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='sourcing_histories', null=True, blank=True)
     product = models.CharField(max_length=255)
     location = models.CharField(max_length=255)
     results = models.JSONField()
@@ -94,6 +95,7 @@ class SourcingHistory(models.Model):
         return f"{self.product} à {self.location} ({self.created_at.strftime('%d/%m/%Y')})"
 
 class QuoteComparisonHistory(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quote_comparisons', null=True, blank=True)
     filenames = models.JSONField()
     markdown_result = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
