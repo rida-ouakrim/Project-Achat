@@ -86,9 +86,16 @@ const DirectorDashboard = () => {
   const activeOrdersCount = requests.filter(req => req.status === 'Commandé' || req.status === 'Reçu').length;
 
   const totalCost = requests.reduce((acc, req) => {
-    if (req.price && (req.status === 'Commandé' || req.status === 'Reçu')) {
-      const numericPrice = parseInt(req.price.replace(/[^0-9]/g, '')) || 0;
-      return acc + numericPrice;
+    if (req.items && (req.status === 'Commandé' || req.status === 'Reçu')) {
+      const orderTotal = req.items.reduce((sum, item) => {
+        if (item.price) {
+          const unitPrice = parseFloat(item.price.replace(/[^0-9.]/g, '')) || 0;
+          const qty = parseInt(item.qty, 10) || 1;
+          return sum + (unitPrice * qty);
+        }
+        return sum;
+      }, 0);
+      return acc + orderTotal;
     }
     return acc;
   }, 0);
@@ -121,9 +128,15 @@ const DirectorDashboard = () => {
   const getSupplierData = () => {
     const suppliers = {};
     requests.forEach(req => {
-      if (req.supplier && req.price && (req.status === 'Commandé' || req.status === 'Reçu')) {
-        const cost = parseInt(req.price.replace(/[^0-9]/g, '')) || 0;
-        suppliers[req.supplier] = (suppliers[req.supplier] || 0) + cost;
+      if (req.items && (req.status === 'Commandé' || req.status === 'Reçu')) {
+        req.items.forEach(it => {
+          if (it.supplier && it.price) {
+            const unitPrice = parseFloat(it.price.replace(/[^0-9.]/g, '')) || 0;
+            const qty = parseInt(it.qty, 10) || 1;
+            const total = unitPrice * qty;
+            suppliers[it.supplier] = (suppliers[it.supplier] || 0) + total;
+          }
+        });
       }
     });
 
@@ -170,10 +183,18 @@ const DirectorDashboard = () => {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // BOM pour Excel
-    csvContent += "Numéro de Commande,Demandeur,Produit,Quantité,Fournisseur,Prix,Statut,Date de Création\n";
+    csvContent += "Numéro de Commande,Demandeur,Produit,Quantité,Fournisseur,Prix Unitaire,Montant Total,Statut,Date de Création\n";
 
     requests.forEach(req => {
-      csvContent += `"${req.order_number}","${req.requester_name}","${req.product}",${req.qty},"${req.supplier || ''}","${req.price || ''}","${req.status}","${req.date_created}"\n`;
+      if (req.items && req.items.length > 0) {
+        req.items.forEach(it => {
+          const unitPrice = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
+          const total = unitPrice * (parseInt(it.qty, 10) || 1);
+          csvContent += `"${req.order_number}","${req.requester_name}","${it.product}",${it.qty},"${req.supplier || ''}","${it.price || ''}","${total} MAD","${req.status}","${req.date_created}"\n`;
+        });
+      } else {
+        csvContent += `"${req.order_number}","${req.requester_name}","","","","","","${req.status}","${req.date_created}"\n`;
+      }
     });
 
     const encodedUri = encodeURI(csvContent);
