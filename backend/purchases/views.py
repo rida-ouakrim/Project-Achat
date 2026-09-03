@@ -338,11 +338,15 @@ class SourcingHistoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user_id = self.request.query_params.get('user_id')
-        if user_id:
-            return self.queryset.filter(user_id=user_id)
-        if self.request.user and self.request.user.is_authenticated:
-            return self.queryset.filter(user=self.request.user)
-        return self.queryset
+        try:
+            if user_id:
+                return self.queryset.filter(user_id=user_id)
+            if self.request.user and self.request.user.is_authenticated:
+                return self.queryset.filter(user=self.request.user)
+            return self.queryset
+        except Exception as e:
+            print("Erreur filtre historique (migration requise):", e)
+            return self.queryset
 
 @api_view(['POST'])
 def ai_compare_quotes(request):
@@ -411,11 +415,15 @@ class QuoteComparisonHistoryViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         user_id = self.request.query_params.get('user_id')
-        if user_id:
-            return self.queryset.filter(user_id=user_id)
-        if self.request.user and self.request.user.is_authenticated:
-            return self.queryset.filter(user=self.request.user)
-        return self.queryset
+        try:
+            if user_id:
+                return self.queryset.filter(user_id=user_id)
+            if self.request.user and self.request.user.is_authenticated:
+                return self.queryset.filter(user=self.request.user)
+            return self.queryset
+        except Exception as e:
+            print("Erreur filtre historique (migration requise):", e)
+            return self.queryset
 
 class NotificationViewSet(viewsets.ModelViewSet):
     queryset = Notification.objects.all().order_by('-created_at')
