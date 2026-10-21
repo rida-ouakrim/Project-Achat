@@ -29,6 +29,8 @@ services:
       - GOOGLE_CLOUD_PROJECT=${GOOGLE_CLOUD_PROJECT}
       - GOOGLE_CLOUD_REGION=${GOOGLE_CLOUD_REGION}
       - GOOGLE_APPLICATION_CREDENTIALS=/app/credentials.json
+    volumes:
+      - media_volume:/app/media
     depends_on:
       - db
     restart: always
@@ -48,3 +50,4 @@ services:
 
 volumes:
   postgres_data:
+  media_volume:
