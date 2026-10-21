@@ -230,21 +230,40 @@ const RequesterDashboard = () => {
     setError('');
 
     try {
-      const payload = new FormData();
-      payload.append('requester', parseInt(userId));
-      payload.append('assignment', formData.assignment);
-      payload.append('observation', formData.observation || '');
-      payload.append('status', 'En attente');
-      payload.append('items', JSON.stringify(items.map(item => ({
-        product: item.product,
-        qty: parseInt(item.qty)
-      }))));
-
-      if (requestFile) {
-        payload.append('request_pdf', requestFile);
+      const currentUserId = parseInt(userId || localStorage.getItem('userId'));
+      if (!currentUserId || isNaN(currentUserId)) {
+        toast.error("Session utilisateur expirée. Veuillez vous reconnecter.");
+        setError("Session expirée. Veuillez vous déconnecter et vous reconnecter.");
+        setSubmitting(false);
+        return;
       }
 
-      await createRequest(payload);
+      if (requestFile) {
+        const payload = new FormData();
+        payload.append('requester', currentUserId);
+        payload.append('assignment', formData.assignment);
+        payload.append('observation', formData.observation || '');
+        payload.append('status', 'En attente');
+        payload.append('items', JSON.stringify(items.map(item => ({
+          product: item.product,
+          qty: parseInt(item.qty)
+        }))));
+        payload.append('request_pdf', requestFile);
+        await createRequest(payload);
+      } else {
+        const payload = {
+          requester: currentUserId,
+          assignment: formData.assignment,
+          observation: formData.observation || '',
+          status: 'En attente',
+          items: items.map(item => ({
+            product: item.product,
+            qty: parseInt(item.qty)
+          }))
+        };
+        await createRequest(payload);
+      }
+
       setFormData({ assignment: '', observation: '' });
       setItems([{ product: '', qty: '' }]);
       setRequestFile(null);
@@ -258,9 +277,12 @@ const RequesterDashboard = () => {
           : 'Votre demande a été créée et transmise avec succès !'
       );
     } catch (err) {
-      console.error(err);
+      console.error("Erreur lors de la création de la demande :", err);
+      const detail = err.response?.data
+        ? (typeof err.response.data === 'object' ? JSON.stringify(err.response.data) : String(err.response.data))
+        : "Échec de la soumission de la demande d'achat.";
       toast.error("Impossible de soumettre la demande.");
-      setError("Échec de la soumission de la demande d'achat.");
+      setError(detail);
     } finally {
       setSubmitting(false);
     }

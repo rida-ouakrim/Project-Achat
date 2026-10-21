@@ -86,15 +86,28 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny] 
 
     def create(self, request, *args, **kwargs):
-        data = request.data.copy()
+        if hasattr(request.data, 'dict'):
+            data = request.data.dict()
+        else:
+            try:
+                data = dict(request.data)
+            except Exception:
+                data = request.data.copy()
+
         if 'items' in data and isinstance(data['items'], str):
             import json
             try:
                 data['items'] = json.loads(data['items'])
             except json.JSONDecodeError:
                 pass
+
+        if hasattr(request, 'FILES') and 'request_pdf' in request.FILES:
+            data['request_pdf'] = request.FILES['request_pdf']
+
         serializer = self.get_serializer(data=data)
-        serializer.is_valid(raise_exception=True)
+        if not serializer.is_valid():
+            print("Erreurs validation création demande:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         self.perform_create(serializer)
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
