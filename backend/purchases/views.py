@@ -102,7 +102,51 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 pass
 
         if hasattr(request, 'FILES') and 'request_pdf' in request.FILES:
-            data['request_pdf'] = request.FILES['request_pdf']
+            files = request.FILES.getlist('request_pdf')
+            if len(files) == 1:
+                data['request_pdf'] = files[0]
+            elif len(files) > 1:
+                # Si plusieurs images sont fournies, les combiner proprement en un seul document PDF
+                has_pdf = any(f.name.lower().endswith('.pdf') for f in files)
+                if not has_pdf:
+                    try:
+                        import io
+                        import uuid
+                        from PIL import Image
+                        from django.core.files.uploadedfile import InMemoryUploadedFile
+
+                        pil_images = []
+                        for f in files:
+                            img = Image.open(f)
+                            if img.mode in ('RGBA', 'P', 'LA'):
+                                img = img.convert('RGB')
+                            elif img.mode != 'RGB':
+                                img = img.convert('RGB')
+                            pil_images.append(img)
+
+                        if pil_images:
+                            pdf_buf = io.BytesIO()
+                            first_img = pil_images[0]
+                            rest_imgs = pil_images[1:]
+                            first_img.save(pdf_buf, format='PDF', save_all=True, append_images=rest_imgs)
+                            pdf_buf.seek(0)
+
+                            filename = f"pieces_jointes_{uuid.uuid4().hex[:8]}.pdf"
+                            combined_file = InMemoryUploadedFile(
+                                pdf_buf,
+                                'request_pdf',
+                                filename,
+                                'application/pdf',
+                                pdf_buf.getbuffer().nbytes,
+                                None
+                            )
+                            data['request_pdf'] = combined_file
+                    except Exception as e:
+                        print("Erreur fusion images en PDF:", e)
+                        data['request_pdf'] = files[0]
+                else:
+                    pdf_file = next((f for f in files if f.name.lower().endswith('.pdf')), files[0])
+                    data['request_pdf'] = pdf_file
 
         serializer = self.get_serializer(data=data)
         if not serializer.is_valid():

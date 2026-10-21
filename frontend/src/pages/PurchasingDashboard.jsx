@@ -89,15 +89,6 @@ const PurchasingDashboard = () => {
         <td style="text-align: center; font-weight: 600;">${it.qty}</td>
       </tr>
     `).join('');
-
-    const mediaUrl = req.request_pdf ? getMediaUrl(req.request_pdf) : null;
-    const isImg = req.request_pdf && (
-      req.request_pdf.toLowerCase().endsWith('.jpg') || 
-      req.request_pdf.toLowerCase().endsWith('.jpeg') || 
-      req.request_pdf.toLowerCase().endsWith('.png') || 
-      req.request_pdf.toLowerCase().endsWith('.webp') ||
-      !req.request_pdf.toLowerCase().endsWith('.pdf')
-    );
     
     const printWindow = window.open('', '_blank');
     const htmlContent = `
@@ -223,14 +214,8 @@ const PurchasingDashboard = () => {
               color: #94a3b8;
               font-weight: 400;
             }
-            .signed-sheet-page {
-              page-break-before: always;
-              margin-top: 40px;
-              padding-top: 20px;
-            }
             @media print {
               body { padding: 20px; }
-              .signed-sheet-page { page-break-before: always; }
             }
           </style>
         </head>
@@ -281,23 +266,6 @@ const PurchasingDashboard = () => {
             <p>Ce document est une fiche de demande d'achat interne émise électroniquement par le système MAN Procurement.</p>
             <p>&copy; ${new Date().getFullYear()} MAN Truck & Bus Maroc. Tous droits réservés.</p>
           </div>
-
-          ${mediaUrl ? `
-            <div class="signed-sheet-page">
-              <div class="section-title">Feuille de Demande Signée par le Responsable (Document Joint)</div>
-              <div style="text-align: center; margin-top: 20px;">
-                ${isImg ? `
-                  <img src="${mediaUrl}" style="max-width: 100%; max-height: 820px; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" alt="Feuille de demande signée" />
-                ` : `
-                  <div style="padding: 20px; border: 2px dashed #94a3b8; border-radius: 8px; background-color: #f8fafc;">
-                    <p style="font-weight: 600; color: #0f172a; margin-bottom: 8px;">Document PDF joint : Feuille signée</p>
-                    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Consulter le document : <a href="${mediaUrl}" target="_blank" style="color: #2563eb;">Ouvrir la feuille signée</a></p>
-                    <iframe src="${mediaUrl}" style="width: 100%; height: 750px; border: 1px solid #cbd5e1; border-radius: 6px;"></iframe>
-                  </div>
-                `}
-              </div>
-            </div>
-          ` : ''}
 
           <script>
             window.onload = function() {
@@ -543,16 +511,28 @@ const PurchasingDashboard = () => {
                         </span>
                       )}
                       {req.request_pdf && (
-                        <div>
+                        <div style={{ marginTop: '0.35rem' }}>
                           <a 
                             href={getMediaUrl(req.request_pdf)} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
-                            style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                            style={{ 
+                              color: '#1d4ed8', 
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '4px',
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '0.3rem', 
+                              textDecoration: 'none' 
+                            }}
+                            title="Consulter la pièce jointe ou feuille signée"
                           >
                             <FileText size={12} />
-                            <span>{req.requester_name && req.requester_name.toLowerCase().includes('compta') ? 'Voir feuille signée' : 'Dossier PDF'}</span>
+                            <span>{req.requester_name && req.requester_name.toLowerCase().includes('compta') ? 'Voir feuille signée' : 'Voir pièce(s) jointe(s)'}</span>
                           </a>
                         </div>
                       )}
@@ -709,16 +689,30 @@ const PurchasingDashboard = () => {
                     <td style={{ fontWeight: 500 }}>
                       <div>{order.order_number}</div>
                       {order.request_pdf && (
-                        <a 
-                          href={getMediaUrl(order.request_pdf)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
-                          style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
-                        >
-                          <FileText size={12} />
-                          <span>{order.requester_name && order.requester_name.toLowerCase().includes('compta') ? 'Feuille Signée' : 'Dossier PDF'}</span>
-                        </a>
+                        <div style={{ marginTop: '0.35rem' }}>
+                          <a 
+                            href={getMediaUrl(order.request_pdf)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            style={{ 
+                              color: '#1d4ed8', 
+                              backgroundColor: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              borderRadius: '4px',
+                              padding: '0.2rem 0.5rem',
+                              fontSize: '0.72rem',
+                              fontWeight: 600,
+                              display: 'inline-flex', 
+                              alignItems: 'center', 
+                              gap: '0.3rem', 
+                              textDecoration: 'none' 
+                            }}
+                            title="Consulter la pièce jointe ou feuille signée"
+                          >
+                            <FileText size={12} />
+                            <span>{order.requester_name && order.requester_name.toLowerCase().includes('compta') ? 'Feuille Signée' : 'Pièce(s) Jointe(s)'}</span>
+                          </a>
+                        </div>
                       )}
                     </td>
                     <td>
@@ -928,6 +922,46 @@ const PurchasingDashboard = () => {
               </div>
             </div>
             <form onSubmit={handleConfirmOrder}>
+              {selectedRequest?.request_pdf && (
+                <div style={{
+                  backgroundColor: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 'var(--radius-md)',
+                  padding: '0.75rem 1rem',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '1rem'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#1e40af', fontSize: '0.85rem' }}>
+                    <FileText size={18} />
+                    <div>
+                      <strong>Pièce jointe / feuille signée disponible</strong>
+                      <div style={{ fontSize: '0.75rem', color: '#3b82f6' }}>Vérifiez les documents transmis avant de commander</div>
+                    </div>
+                  </div>
+                  <a 
+                    href={getMediaUrl(selectedRequest.request_pdf)} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="btn btn-outline"
+                    style={{ 
+                      padding: '0.35rem 0.75rem', 
+                      fontSize: '0.75rem', 
+                      borderColor: '#2563eb', 
+                      color: '#2563eb', 
+                      backgroundColor: '#ffffff',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      whiteSpace: 'nowrap'
+                    }}
+                  >
+                    <Eye size={13} /> Consulter le document joint
+                  </a>
+                </div>
+              )}
               <p className="text-sm text-muted mb-4">
                 Veuillez renseigner le fournisseur et le prix négocié pour chaque article de la commande.
               </p>

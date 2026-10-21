@@ -24,9 +24,9 @@ const RequesterDashboard = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState(null);
 
-  // States for signed request sheet upload (Comptabilité & autres)
-  const [requestFile, setRequestFile] = useState(null);
-  const [filePreview, setFilePreview] = useState(null);
+  // States for signed request sheet upload (Comptabilité & autres - support multi-fichiers)
+  const [requestFiles, setRequestFiles] = useState([]);
+  const [filePreviews, setFilePreviews] = useState([]);
 
   const [formData, setFormData] = useState({
     assignment: '',
@@ -87,22 +87,53 @@ const RequesterDashboard = () => {
   const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setRequestFile(file);
+    const selected = Array.from(e.target.files || []);
+    if (selected.length === 0) {
+      setRequestFiles([]);
+      setFilePreviews([]);
+      return;
+    }
+    setRequestFiles(selected);
+
+    const previews = new Array(selected.length);
+    let loadedCount = 0;
+
+    selected.forEach((file, index) => {
       if (file.type.startsWith('image/')) {
         const reader = new FileReader();
         reader.onloadend = () => {
-          setFilePreview(reader.result);
+          previews[index] = {
+            name: file.name,
+            url: reader.result,
+            isImage: true,
+            size: (file.size / 1024).toFixed(0) + ' Ko'
+          };
+          loadedCount++;
+          if (loadedCount === selected.length) {
+            setFilePreviews([...previews.filter(Boolean)]);
+          }
         };
         reader.readAsDataURL(file);
       } else {
-        setFilePreview(null);
+        previews[index] = {
+          name: file.name,
+          url: null,
+          isImage: false,
+          size: (file.size / 1024).toFixed(0) + ' Ko'
+        };
+        loadedCount++;
+        if (loadedCount === selected.length) {
+          setFilePreviews([...previews.filter(Boolean)]);
+        }
       }
-    } else {
-      setRequestFile(null);
-      setFilePreview(null);
-    }
+    });
+  };
+
+  const handleRemoveFile = (indexToRemove) => {
+    const updatedFiles = requestFiles.filter((_, idx) => idx !== indexToRemove);
+    const updatedPreviews = filePreviews.filter((_, idx) => idx !== indexToRemove);
+    setRequestFiles(updatedFiles);
+    setFilePreviews(updatedPreviews);
   };
 
   const handlePrintBlankForm = () => {
@@ -221,7 +252,7 @@ const RequesterDashboard = () => {
       return;
     }
 
-    if (isAccountingUser && !requestFile) {
+    if (isAccountingUser && requestFiles.length === 0) {
       toast.error("Veuillez joindre la photo ou le scan de la feuille signée par votre validateur.");
       return;
     }
@@ -238,7 +269,7 @@ const RequesterDashboard = () => {
         return;
       }
 
-      if (requestFile) {
+      if (requestFiles.length > 0) {
         const payload = new FormData();
         payload.append('requester', currentUserId);
         payload.append('assignment', formData.assignment);
@@ -248,7 +279,9 @@ const RequesterDashboard = () => {
           product: item.product,
           qty: parseInt(item.qty)
         }))));
-        payload.append('request_pdf', requestFile);
+        requestFiles.forEach(file => {
+          payload.append('request_pdf', file);
+        });
         await createRequest(payload);
       } else {
         const payload = {
@@ -266,8 +299,8 @@ const RequesterDashboard = () => {
 
       setFormData({ assignment: '', observation: '' });
       setItems([{ product: '', qty: '' }]);
-      setRequestFile(null);
-      setFilePreview(null);
+      setRequestFiles([]);
+      setFilePreviews([]);
       // Recharger les demandes et les suggestions pour actualiser
       await loadRequests();
       await loadSuggestions();
@@ -444,28 +477,84 @@ const RequesterDashboard = () => {
             </label>
             <p className="text-xs text-muted mb-3">
               {isAccountingUser 
-                ? 'Prenez en photo ou scannez la feuille signée et cachetée par votre validateur (Formats acceptés : JPG, PNG, PDF).'
-                : 'Joindre un document ou scan si nécessaire.'}
+                ? 'Prenez en photo ou scannez la feuille signée et cachetée (vous pouvez sélectionner une ou plusieurs images/pages, ou un fichier PDF).'
+                : 'Joindre un ou plusieurs documents/photos si nécessaire (JPG, PNG, PDF).'}
             </p>
             <input 
               type="file" 
+              multiple
               accept="image/*,application/pdf"
               onChange={handleFileChange}
               className="form-input"
               style={{ backgroundColor: '#ffffff' }}
-              required={isAccountingUser}
+              required={isAccountingUser && requestFiles.length === 0}
               disabled={submitting}
             />
-            {filePreview && (
-              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
-                <p className="text-xs text-muted mb-2">Aperçu de la feuille signée :</p>
-                <img src={filePreview} alt="Aperçu signature" style={{ maxHeight: '220px', borderRadius: 'var(--radius-sm)', border: '1px solid #cbd5e1', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+            {filePreviews.length > 0 && (
+              <div style={{ marginTop: '1rem' }}>
+                <p className="text-xs text-muted mb-2" style={{ fontWeight: 600 }}>
+                  Fichier(s) sélectionné(s) ({filePreviews.length}) :
+                </p>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                  {filePreviews.map((p, idx) => (
+                    <div 
+                      key={idx} 
+                      style={{ 
+                        position: 'relative', 
+                        padding: '0.5rem', 
+                        border: '1px solid #cbd5e1', 
+                        borderRadius: '6px', 
+                        backgroundColor: '#ffffff',
+                        width: '130px',
+                        textAlign: 'center',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+                      }}
+                    >
+                      {p.isImage ? (
+                        <img 
+                          src={p.url} 
+                          alt={p.name} 
+                          style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '4px', marginBottom: '0.35rem' }} 
+                        />
+                      ) : (
+                        <div style={{ height: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', borderRadius: '4px', marginBottom: '0.35rem' }}>
+                          <FileText size={28} color="#64748b" />
+                          <span style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '4px' }}>PDF</span>
+                        </div>
+                      )}
+                      <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={p.name}>
+                        {p.name}
+                      </div>
+                      <div style={{ fontSize: '0.65rem', color: '#94a3b8' }}>{p.size}</div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveFile(idx)}
+                        style={{
+                          position: 'absolute',
+                          top: '-6px',
+                          right: '-6px',
+                          backgroundColor: '#ef4444',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '50%',
+                          width: '20px',
+                          height: '20px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '12px',
+                          fontWeight: 'bold',
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.2)'
+                        }}
+                        title="Supprimer ce fichier"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </div>
-            )}
-            {requestFile && !filePreview && (
-              <p className="text-xs mt-2" style={{ color: '#16a34a', fontWeight: 600 }}>
-                Document sélectionné : {requestFile.name}
-              </p>
             )}
           </div>
 
