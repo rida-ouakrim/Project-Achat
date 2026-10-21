@@ -115,8 +115,8 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     user=p_user,
                     message=f"Nouvelle demande {instance.order_number} de la Comptabilité (validée sur feuille papier) prête pour achat."
                 )
-        # 2. Check if the requester is a validator (auto-validation)
-        elif instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma']:
+        # 2. Check if the requester is a validator or commercial (auto-validation)
+        elif instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'obelkadi.man@sefamar.ma']:
             instance.is_validated = True
             instance.validated_by = instance.requester
             instance.save()
@@ -126,6 +126,8 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 validator_name = "Mme EL MANSOURI"
             elif instance.requester.username == "chadi@sefamar.ma":
                 validator_name = "Chadi Ismail"
+            elif instance.requester.username == "obelkadi.man@sefamar.ma":
+                validator_name = "O. BELKADI (Commercial)"
             else:
                 validator_name = "Mme BENELHASSANE"
             

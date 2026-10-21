@@ -41,6 +41,26 @@ def setup_default_accounts(sender, **kwargs):
     except Exception as e:
         print("Initialisation compte Comptabilité:", e)
 
+    # 3. Compte Commercial (Demandeur - Validation Automatique)
+    com_user = os.environ.get('COMMERCIAL_INITIAL_USER', 'obelkadi.man@sefamar.ma')
+    com_pass = os.environ.get('COMMERCIAL_INITIAL_PASSWORD', 'obelkadi2026')
+    try:
+        user, created = User.objects.get_or_create(username=com_user)
+        if created:
+            user.set_password(com_pass)
+            user.save()
+            Profile.objects.create(user=user, role='requester')
+            print("Compte Commercial créé avec succès.")
+        else:
+            user.set_password(com_pass)
+            user.save()
+            profile, _ = Profile.objects.get_or_create(user=user)
+            if profile.role != 'requester':
+                profile.role = 'requester'
+                profile.save()
+    except Exception as e:
+        print("Initialisation compte Commercial:", e)
+
 class PurchasesConfig(AppConfig):
     name = 'purchases'
 

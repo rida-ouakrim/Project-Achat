@@ -547,7 +547,7 @@ const DirectorDashboard = () => {
                             fontWeight: 600,
                             display: 'inline-block'
                           }}>
-                            Validé ({order.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : order.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : order.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : order.validated_by_name})
+                            Validé ({order.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : order.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : order.validated_by_name === 'obelkadi.man@sefamar.ma' ? 'O. BELKADI (Commercial)' : order.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : order.validated_by_name})
                           </span>
                         ) : (
                           <span className="badge" style={{ 
@@ -695,7 +695,7 @@ const DirectorDashboard = () => {
                           u.profile?.role === 'purchasing' ? 'ordered' : 
                           u.profile?.role === 'ai_tools' ? 'pending' : 'received'
                         }`} style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}>
-                          {u.profile?.role === 'requester' ? (u.username.toLowerCase().includes('compta') ? 'Demandeur (Comptabilité)' : 'Demandeur') : 
+                          {u.profile?.role === 'requester' ? (u.username.toLowerCase().includes('compta') ? 'Demandeur (Comptabilité)' : u.username === 'obelkadi.man@sefamar.ma' ? 'Demandeur (Commercial)' : 'Demandeur') : 
                            u.profile?.role === 'purchasing' ? 'Acheteur' : 
                            u.profile?.role === 'ai_tools' ? 'Outils IA (Filiale)' : 'Directeur'}
                         </span>
@@ -804,7 +804,7 @@ const DirectorDashboard = () => {
                         fontSize: '0.75rem',
                         fontWeight: 600
                       }}>
-                        Validé ({detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : detailsRequest.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : detailsRequest.validated_by_name})
+                        Validé ({detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : detailsRequest.validated_by_name === 'obelkadi.man@sefamar.ma' ? 'O. BELKADI (Commercial)' : detailsRequest.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : detailsRequest.validated_by_name})
                       </span>
                     ) : (
                       <span className="badge" style={{ 
