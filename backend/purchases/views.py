@@ -102,8 +102,21 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         instance = serializer.save()
         
-        # Check if the requester is a validator (auto-validation)
-        if instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma']:
+        # 1. Vérifier si le demandeur appartient à l'équipe comptabilité (validation sur feuille papier)
+        is_accounting = (
+            instance.requester.username == 'comptabilite@sefamar.ma' or 
+            'compta' in instance.requester.username.lower()
+        )
+        if is_accounting:
+            # Ne pas notifier les validateurs électroniques : validation déjà faite sur feuille papier
+            purchasing_users = User.objects.filter(profile__role='purchasing')
+            for p_user in purchasing_users:
+                Notification.objects.create(
+                    user=p_user,
+                    message=f"Nouvelle demande {instance.order_number} de la Comptabilité (validée sur feuille papier) prête pour achat."
+                )
+        # 2. Check if the requester is a validator (auto-validation)
+        elif instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma']:
             instance.is_validated = True
             instance.validated_by = instance.requester
             instance.save()

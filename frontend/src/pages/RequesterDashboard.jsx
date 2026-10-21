@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Send, AlertCircle, RefreshCw, Plus, Trash2, FileText, Eye, X } from 'lucide-react';
+import { Send, AlertCircle, RefreshCw, Plus, Trash2, FileText, Eye, X, Printer, Upload, Image as ImageIcon, FileCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, createRequest, fetchCatalog } from '../api';
 
@@ -24,6 +24,10 @@ const RequesterDashboard = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState(null);
 
+  // States for signed request sheet upload (Comptabilité & autres)
+  const [requestFile, setRequestFile] = useState(null);
+  const [filePreview, setFilePreview] = useState(null);
+
   const [formData, setFormData] = useState({
     assignment: '',
     observation: ''
@@ -33,6 +37,7 @@ const RequesterDashboard = () => {
 
   const userId = localStorage.getItem('userId');
   const userName = localStorage.getItem('userName');
+  const isAccountingUser = (userName || '').toLowerCase() === 'comptabilite@sefamar.ma' || (userName || '').toLowerCase().includes('compta');
 
   const loadRequests = async () => {
     setLoading(true);
@@ -81,10 +86,143 @@ const RequesterDashboard = () => {
 
   const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setRequestFile(file);
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setFilePreview(reader.result);
+        };
+        reader.readAsDataURL(file);
+      } else {
+        setFilePreview(null);
+      }
+    } else {
+      setRequestFile(null);
+      setFilePreview(null);
+    }
+  };
+
+  const handlePrintBlankForm = () => {
+    const printWindow = window.open('', '_blank');
+    const validItems = items.filter(it => it.product && it.product.trim());
+    const rowsHtml = validItems.length > 0
+      ? validItems.map(it => `
+        <tr>
+          <td style="padding: 12px; border: 1px solid #cbd5e1; font-weight: 600;">${it.product}</td>
+          <td style="padding: 12px; border: 1px solid #cbd5e1; text-align: center; font-weight: 600;">${it.qty || 1}</td>
+        </tr>
+      `).join('')
+      : `
+        <tr><td style="padding: 22px; border: 1px solid #cbd5e1;">&nbsp;</td><td style="border: 1px solid #cbd5e1;">&nbsp;</td></tr>
+        <tr><td style="padding: 22px; border: 1px solid #cbd5e1;">&nbsp;</td><td style="border: 1px solid #cbd5e1;">&nbsp;</td></tr>
+        <tr><td style="padding: 22px; border: 1px solid #cbd5e1;">&nbsp;</td><td style="border: 1px solid #cbd5e1;">&nbsp;</td></tr>
+        <tr><td style="padding: 22px; border: 1px solid #cbd5e1;">&nbsp;</td><td style="border: 1px solid #cbd5e1;">&nbsp;</td></tr>
+      `;
+
+    const htmlContent = `
+      <html>
+        <head>
+          <title>Fiche de Demande d'Achat - Comptabilité</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
+            body { font-family: 'Outfit', sans-serif; padding: 40px; color: #0f172a; margin: 0; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
+            .header h1 { margin: 0; font-size: 22px; font-weight: 800; }
+            .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 25px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+            th { background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+            td { font-size: 14px; }
+            .sig-box { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+            .sig { border: 2px dashed #94a3b8; height: 130px; padding: 12px; border-radius: 8px; }
+            @media print { body { padding: 20px; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div>
+              <img src="/logo.png" style="height: 40px; object-fit: contain;" />
+              <div style="font-weight: 700; margin-top: 5px; font-size: 14px;">MAN Truck & Bus Maroc</div>
+            </div>
+            <div style="text-align: right;">
+              <h1>DEMANDE D'ACHAT (FEUILLE PAPIER)</h1>
+              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Service Comptabilité</p>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div>
+              <p style="margin: 0 0 6px 0;"><strong>Demandeur :</strong> ${userName || 'Comptabilité'}</p>
+              <p style="margin: 0;"><strong>Affectation :</strong> ${formData.assignment || 'À renseigner'}</p>
+            </div>
+            <div>
+              <p style="margin: 0 0 6px 0;"><strong>Date d'émission :</strong> ${new Date().toLocaleDateString('fr-FR')}</p>
+              <p style="margin: 0;"><strong>Référence :</strong> <i>Générée après téléversement</i></p>
+            </div>
+          </div>
+
+          <div style="font-size: 12px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+            Désignation des Articles Demandés
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Désignation Article</th>
+                <th style="width: 140px; text-align: center;">Quantité</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          ${formData.observation ? `
+            <div style="margin-top: 20px; font-size: 13px;">
+              <strong>Observation :</strong> ${formData.observation}
+            </div>
+          ` : ''}
+
+          <div class="sig-box">
+            <div class="sig">
+              <div style="font-weight: 700; font-size: 12px; color: #475569;">1. VISA DEMANDEUR (Comptabilité)</div>
+              <div style="margin-top: 8px; font-size: 11px; color: #94a3b8;">Nom & Date :</div>
+            </div>
+            <div class="sig" style="background-color: #faf5ff; border-color: #a855f7;">
+              <div style="font-weight: 700; font-size: 12px; color: #7e22ce;">2. VISA & SIGNATURE DU VALIDATEUR (Obligatoire)</div>
+              <div style="margin-top: 6px; font-size: 11px; color: #9333ea;">
+                Signature physique & Cachet autorisant la commande avant scan.
+              </div>
+            </div>
+          </div>
+
+          <p style="margin-top: 50px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px;">
+            Document officiel à faire signer puis à photographier/scanner pour téléversement sur le portail Achats MAN.
+          </p>
+
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 400);
+            };
+          </script>
+        </body>
+      </html>
+    `;
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (items.some(item => !item.product.trim() || !item.qty)) {
       toast.error("Veuillez remplir tous les produits et quantités.");
+      return;
+    }
+
+    if (isAccountingUser && !requestFile) {
+      toast.error("Veuillez joindre la photo ou le scan de la feuille signée par votre validateur.");
       return;
     }
     
@@ -92,24 +230,33 @@ const RequesterDashboard = () => {
     setError('');
 
     try {
-      const payload = {
-        requester: parseInt(userId),
-        assignment: formData.assignment,
-        observation: formData.observation,
-        status: 'En attente',
-        items: items.map(item => ({
-          product: item.product,
-          qty: parseInt(item.qty)
-        }))
-      };
+      const payload = new FormData();
+      payload.append('requester', parseInt(userId));
+      payload.append('assignment', formData.assignment);
+      payload.append('observation', formData.observation || '');
+      payload.append('status', 'En attente');
+      payload.append('items', JSON.stringify(items.map(item => ({
+        product: item.product,
+        qty: parseInt(item.qty)
+      }))));
+
+      if (requestFile) {
+        payload.append('request_pdf', requestFile);
+      }
 
       await createRequest(payload);
       setFormData({ assignment: '', observation: '' });
       setItems([{ product: '', qty: '' }]);
+      setRequestFile(null);
+      setFilePreview(null);
       // Recharger les demandes et les suggestions pour actualiser
       await loadRequests();
       await loadSuggestions();
-      toast.success('Votre demande a été créée et transmise avec succès !');
+      toast.success(
+        isAccountingUser
+          ? 'Votre demande avec feuille signée a été transmise directement aux Achats !'
+          : 'Votre demande a été créée et transmise avec succès !'
+      );
     } catch (err) {
       console.error(err);
       toast.error("Impossible de soumettre la demande.");
@@ -147,6 +294,29 @@ const RequesterDashboard = () => {
           borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', fontSize: '0.875rem'
         }}>
           {error}
+        </div>
+      )}
+
+      {isAccountingUser && (
+        <div className="card mb-4" style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '1rem 1.25rem' }}>
+          <div className="flex justify-between items-center flex-wrap gap-2">
+            <div>
+              <h4 style={{ margin: 0, color: '#166534', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileCheck size={20} /> Espace Demandeur - Équipe Comptabilité (Validation Papier)
+              </h4>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.8125rem', color: '#15803d' }}>
+                Votre validateur ne passe pas par l'application : faites signer la feuille papier par votre responsable, puis téléversez la photo signée ci-dessous.
+              </p>
+            </div>
+            <button 
+              type="button" 
+              className="btn btn-outline" 
+              style={{ borderColor: '#16a34a', color: '#16a34a', backgroundColor: '#ffffff', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+              onClick={handlePrintBlankForm}
+            >
+              <Printer size={15} /> Imprimer la feuille à faire signer
+            </button>
+          </div>
         </div>
       )}
 
@@ -244,6 +414,39 @@ const RequesterDashboard = () => {
             ></textarea>
           </div>
 
+          {/* Zone d'upload de la feuille signée pour la comptabilité */}
+          <div style={{ backgroundColor: isAccountingUser ? '#faf5ff' : 'var(--color-bg)', padding: '1.25rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem', border: isAccountingUser ? '2px dashed #c084fc' : '1px solid #e2e8f0' }}>
+            <label className="form-label" style={{ fontWeight: 600, color: isAccountingUser ? '#6b21a8' : 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Upload size={18} />
+              {isAccountingUser ? 'Photo ou Scan de la Demande Signée (Obligatoire)' : 'Fichier ou document joint (Optionnel)'}
+            </label>
+            <p className="text-xs text-muted mb-3">
+              {isAccountingUser 
+                ? 'Prenez en photo ou scannez la feuille signée et cachetée par votre validateur (Formats acceptés : JPG, PNG, PDF).'
+                : 'Joindre un document ou scan si nécessaire.'}
+            </p>
+            <input 
+              type="file" 
+              accept="image/*,application/pdf"
+              onChange={handleFileChange}
+              className="form-input"
+              style={{ backgroundColor: '#ffffff' }}
+              required={isAccountingUser}
+              disabled={submitting}
+            />
+            {filePreview && (
+              <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                <p className="text-xs text-muted mb-2">Aperçu de la feuille signée :</p>
+                <img src={filePreview} alt="Aperçu signature" style={{ maxHeight: '220px', borderRadius: 'var(--radius-sm)', border: '1px solid #cbd5e1', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+              </div>
+            )}
+            {requestFile && !filePreview && (
+              <p className="text-xs mt-2" style={{ color: '#16a34a', fontWeight: 600 }}>
+                Document sélectionné : {requestFile.name}
+              </p>
+            )}
+          </div>
+
           <div className="flex justify-between items-center mt-4">
             <div className="flex items-center gap-2 text-sm text-muted">
               <AlertCircle size={16} />
@@ -307,7 +510,7 @@ const RequesterDashboard = () => {
                           style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
                         >
                           <FileText size={12} />
-                          <span>Dossier PDF</span>
+                          <span>Feuille Signée</span>
                         </a>
                       )}
                     </td>
@@ -332,7 +535,20 @@ const RequesterDashboard = () => {
                           fontWeight: 600,
                           display: 'inline-block'
                         }}>
-                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name})
+                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name || 'Achats'})
+                        </span>
+                      ) : isAccountingUser ? (
+                        <span className="badge" style={{ 
+                          backgroundColor: '#fef3c7', 
+                          color: '#92400e', 
+                          border: '1px solid #fde68a',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: '0.75rem',
+                          fontWeight: 600,
+                          display: 'inline-block'
+                        }}>
+                          Feuille signée transmise
                         </span>
                       ) : (
                         <span className="badge" style={{ 

@@ -695,7 +695,7 @@ const DirectorDashboard = () => {
                           u.profile?.role === 'purchasing' ? 'ordered' : 
                           u.profile?.role === 'ai_tools' ? 'pending' : 'received'
                         }`} style={{ fontSize: '0.7rem', padding: '0.15rem 0.4rem' }}>
-                          {u.profile?.role === 'requester' ? 'Demandeur' : 
+                          {u.profile?.role === 'requester' ? (u.username.toLowerCase().includes('compta') ? 'Demandeur (Comptabilité)' : 'Demandeur') : 
                            u.profile?.role === 'purchasing' ? 'Acheteur' : 
                            u.profile?.role === 'ai_tools' ? 'Outils IA (Filiale)' : 'Directeur'}
                         </span>

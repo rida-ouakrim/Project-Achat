@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye } from 'lucide-react';
+import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { fetchRequests, updateRequest, createUser, fetchCatalog, createCatalog, updateCatalog, deleteCatalog } from '../api';
+import { fetchRequests, updateRequest, createUser, fetchCatalog, createCatalog, updateCatalog, deleteCatalog, validateRequest } from '../api';
 
 const getMediaUrl = (path) => {
   if (!path) return '';
@@ -42,6 +42,19 @@ const PurchasingDashboard = () => {
  
   // State for filtering tracking table
   const [trackingFilter, setTrackingFilter] = useState('Tous');
+
+  const userId = localStorage.getItem('userId');
+
+  const handleValidatePaper = async (requestId) => {
+    try {
+      await validateRequest(requestId, userId);
+      toast.success("Demande validée avec succès (Feuille signée vérifiée).");
+      await loadRequests();
+    } catch (err) {
+      console.error(err);
+      toast.error("Erreur lors de la validation.");
+    }
+  };
  
   const loadRequests = async () => {
     setLoading(true);
@@ -76,6 +89,15 @@ const PurchasingDashboard = () => {
         <td style="text-align: center; font-weight: 600;">${it.qty}</td>
       </tr>
     `).join('');
+
+    const mediaUrl = req.request_pdf ? getMediaUrl(req.request_pdf) : null;
+    const isImg = req.request_pdf && (
+      req.request_pdf.toLowerCase().endsWith('.jpg') || 
+      req.request_pdf.toLowerCase().endsWith('.jpeg') || 
+      req.request_pdf.toLowerCase().endsWith('.png') || 
+      req.request_pdf.toLowerCase().endsWith('.webp') ||
+      !req.request_pdf.toLowerCase().endsWith('.pdf')
+    );
     
     const printWindow = window.open('', '_blank');
     const htmlContent = `
@@ -193,7 +215,7 @@ const PurchasingDashboard = () => {
               color: #64748b;
             }
             .footer-request {
-              margin-top: 100px;
+              margin-top: 50px;
               border-top: 1px solid #e2e8f0;
               padding-top: 20px;
               text-align: center;
@@ -201,8 +223,14 @@ const PurchasingDashboard = () => {
               color: #94a3b8;
               font-weight: 400;
             }
+            .signed-sheet-page {
+              page-break-before: always;
+              margin-top: 40px;
+              padding-top: 20px;
+            }
             @media print {
               body { padding: 20px; }
+              .signed-sheet-page { page-break-before: always; }
             }
           </style>
         </head>
@@ -225,6 +253,7 @@ const PurchasingDashboard = () => {
             <div>
               <div class="section-title">Détails de la Demande</div>
               <div class="detail-item">Date d'enregistrement : <span>${req.date_created}</span></div>
+              <div class="detail-item">Validation : <span>${req.is_validated ? `Validé (${req.validated_by_name || 'Achats'})` : (req.requester_name && req.requester_name.toLowerCase().includes('compta')) ? 'Feuille papier signée' : 'En attente'}</span></div>
             </div>
           </div>
 
@@ -253,10 +282,27 @@ const PurchasingDashboard = () => {
             <p>&copy; ${new Date().getFullYear()} MAN Truck & Bus Maroc. Tous droits réservés.</p>
           </div>
 
+          ${mediaUrl ? `
+            <div class="signed-sheet-page">
+              <div class="section-title">Feuille de Demande Signée par le Responsable (Document Joint)</div>
+              <div style="text-align: center; margin-top: 20px;">
+                ${isImg ? `
+                  <img src="${mediaUrl}" style="max-width: 100%; max-height: 820px; border: 1px solid #cbd5e1; border-radius: 6px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);" alt="Feuille de demande signée" />
+                ` : `
+                  <div style="padding: 20px; border: 2px dashed #94a3b8; border-radius: 8px; background-color: #f8fafc;">
+                    <p style="font-weight: 600; color: #0f172a; margin-bottom: 8px;">Document PDF joint : Feuille signée</p>
+                    <p style="font-size: 13px; color: #64748b; margin-bottom: 12px;">Consulter le document : <a href="${mediaUrl}" target="_blank" style="color: #2563eb;">Ouvrir la feuille signée</a></p>
+                    <iframe src="${mediaUrl}" style="width: 100%; height: 750px; border: 1px solid #cbd5e1; border-radius: 6px;"></iframe>
+                  </div>
+                `}
+              </div>
+            </div>
+          ` : ''}
+
           <script>
             window.onload = function() {
               window.print();
-              setTimeout(function() { window.close(); }, 300);
+              setTimeout(function() { window.close(); }, 500);
             };
           </script>
         </body>
@@ -308,6 +354,8 @@ const PurchasingDashboard = () => {
 
       const payload = {
         status: 'Commandé',
+        is_validated: true,
+        validated_by: parseInt(userId || '1'),
         items: itemApprovals.map(it => ({
           ...it,
           price: it.price.includes('MAD') ? it.price : `${it.price} MAD`
@@ -489,17 +537,24 @@ const PurchasingDashboard = () => {
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>
                       <div>{req.order_number}</div>
+                      {req.requester_name && req.requester_name.toLowerCase().includes('compta') && (
+                        <span className="badge" style={{ backgroundColor: '#fef3c7', color: '#92400e', fontSize: '0.68rem', marginTop: '0.25rem', display: 'inline-block' }}>
+                          📑 Validation Papier
+                        </span>
+                      )}
                       {req.request_pdf && (
-                        <a 
-                          href={getMediaUrl(req.request_pdf)} 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
-                          style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
-                        >
-                          <FileText size={12} />
-                          <span>Dossier PDF</span>
-                        </a>
+                        <div>
+                          <a 
+                            href={getMediaUrl(req.request_pdf)} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
+                            style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
+                          >
+                            <FileText size={12} />
+                            <span>{req.requester_name && req.requester_name.toLowerCase().includes('compta') ? 'Voir feuille signée' : 'Dossier PDF'}</span>
+                          </a>
+                        </div>
                       )}
                     </td>
                     <td>{req.requester_name}</td>
@@ -523,8 +578,32 @@ const PurchasingDashboard = () => {
                           fontWeight: 600,
                           display: 'inline-block'
                         }}>
-                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name})
+                          Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name || 'Achats'})
                         </span>
+                      ) : (req.requester_name && req.requester_name.toLowerCase().includes('compta')) ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
+                          <span className="badge" style={{ 
+                            backgroundColor: '#fef3c7', 
+                            color: '#92400e', 
+                            border: '1px solid #fde68a',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            display: 'inline-block'
+                          }}>
+                            Feuille signée reçue
+                          </span>
+                          <button 
+                            type="button" 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.2rem 0.45rem', fontSize: '0.7rem', borderColor: '#16a34a', color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', backgroundColor: '#f0fdf4' }}
+                            onClick={() => handleValidatePaper(req.id)}
+                            title="Confirmer la validation de la feuille signée reçue"
+                          >
+                            <Check size={12} /> Valider la signature
+                          </button>
+                        </div>
                       ) : (
                         <span className="badge" style={{ 
                           backgroundColor: '#fee2e2', 
@@ -638,7 +717,7 @@ const PurchasingDashboard = () => {
                           style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
                         >
                           <FileText size={12} />
-                          <span>Dossier PDF</span>
+                          <span>{order.requester_name && order.requester_name.toLowerCase().includes('compta') ? 'Feuille Signée' : 'Dossier PDF'}</span>
                         </a>
                       )}
                     </td>
@@ -1024,17 +1103,32 @@ const PurchasingDashboard = () => {
 
               {detailsRequest.request_pdf && (
                 <div style={{ backgroundColor: 'var(--color-bg)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-                  <p className="text-xs text-muted mb-1">Document de Demande Joint</p>
-                  <a 
-                    href={getMediaUrl(detailsRequest.request_pdf)} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2"
-                    style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}
-                  >
-                    <FileText size={16} />
-                    <span>Visualiser la demande PDF / Image</span>
-                  </a>
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-xs text-muted mb-0">
+                      {detailsRequest.requester_name && detailsRequest.requester_name.toLowerCase().includes('compta')
+                        ? 'Photo / Scan de la Feuille Signée (Comptabilité)'
+                        : 'Document de Demande Joint'}
+                    </p>
+                    <a 
+                      href={getMediaUrl(detailsRequest.request_pdf)} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
+                      style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}
+                    >
+                      <ExternalLink size={13} />
+                      <span>Ouvrir en plein écran</span>
+                    </a>
+                  </div>
+                  {(!detailsRequest.request_pdf.toLowerCase().endsWith('.pdf')) && (
+                    <div style={{ textAlign: 'center', marginTop: '0.5rem' }}>
+                      <img 
+                        src={getMediaUrl(detailsRequest.request_pdf)} 
+                        alt="Feuille de demande signée" 
+                        style={{ maxHeight: '220px', maxWidth: '100%', objectFit: 'contain', borderRadius: 'var(--radius-sm)', border: '1px solid #cbd5e1' }} 
+                      />
+                    </div>
+                  )}
                 </div>
               )}
 

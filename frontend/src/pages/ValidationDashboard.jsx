@@ -62,8 +62,12 @@ const ValidationDashboard = () => {
       const response = await fetchRequests();
       const allRequests = response.data || [];
       
-      // Filtrer pour n'afficher que les demandes en attente de validation
-      const pendingValidation = allRequests.filter(req => !req.is_validated && req.status === 'En attente');
+      // Filtrer pour n'afficher que les demandes en attente de validation (exclure comptabilité qui valide sur papier)
+      const pendingValidation = allRequests.filter(req => {
+        const reqName = (req.requester_name || '').toLowerCase();
+        const isAccounting = reqName === 'comptabilite@sefamar.ma' || reqName.includes('compta');
+        return !req.is_validated && req.status === 'En attente' && !isAccounting;
+      });
       setPendingRequests(pendingValidation);
       
       // Filtrer pour afficher l'historique des validations par ce validateur
