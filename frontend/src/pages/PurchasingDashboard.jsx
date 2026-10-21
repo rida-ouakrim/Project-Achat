@@ -685,6 +685,14 @@ const PurchasingDashboard = () => {
                         >
                           <Eye size={14} />
                         </button>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.25rem 0.5rem', borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                          onClick={() => handleDownloadRequest(order)} 
+                          title="Télécharger / Imprimer la Demande PDF"
+                        >
+                          <Download size={14} />
+                        </button>
                         {order.status === 'Commandé' && (
                           <button 
                             className="btn btn-primary" 
@@ -824,9 +832,21 @@ const PurchasingDashboard = () => {
           <div className="modal-content">
             <div className="modal-header">
               <h3>Approuver la demande ({selectedRequest?.order_number})</h3>
-              <button className="btn btn-outline" onClick={() => setIsApproveModalOpen(false)} style={{ padding: '0.25rem' }}>
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  type="button"
+                  className="btn btn-outline" 
+                  onClick={() => handleDownloadRequest(selectedRequest)} 
+                  title="Télécharger / Imprimer la Demande PDF"
+                  style={{ padding: '0.25rem 0.5rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.75rem', borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                >
+                  <Download size={13} />
+                  Télécharger la demande
+                </button>
+                <button className="btn btn-outline" onClick={() => setIsApproveModalOpen(false)} style={{ padding: '0.25rem' }}>
+                  <X size={16} />
+                </button>
+              </div>
             </div>
             <form onSubmit={handleConfirmOrder}>
               <p className="text-sm text-muted mb-4">
@@ -1068,7 +1088,16 @@ const PurchasingDashboard = () => {
                 </div>
               )}
             </div>
-            <div className="flex justify-end mt-6">
+            <div className="flex justify-between items-center mt-6">
+              <button 
+                type="button"
+                className="btn btn-outline" 
+                style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }} 
+                onClick={() => handleDownloadRequest(detailsRequest)}
+              >
+                <Download size={16} />
+                Télécharger / Imprimer la Demande PDF
+              </button>
               <button className="btn btn-outline" onClick={() => setIsDetailsModalOpen(false)}>Fermer</button>
             </div>
           </div>
