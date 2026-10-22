@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, updateRequest, createUser, fetchCatalog, createCatalog, updateCatalog, deleteCatalog, validateRequest } from '../api';
@@ -43,7 +43,6 @@ const PurchasingDashboard = () => {
   // State for filtering tracking table & pagination
   const [trackingFilter, setTrackingFilter] = useState('Tous');
   const [trackingSearch, setTrackingSearch] = useState('');
-  const [pendingPage, setPendingPage] = useState(1);
   const [trackingPage, setTrackingPage] = useState(1);
   const itemsPerPage = 8;
 
@@ -64,7 +63,7 @@ const PurchasingDashboard = () => {
     setLoading(true);
     try {
       const response = await fetchRequests();
-      setRequests(response.data);
+      setRequests(response.data || []);
     } catch (err) {
       console.error(err);
       setError("Impossible de charger les demandes d'achat depuis le serveur Django.");
@@ -100,46 +99,49 @@ const PurchasingDashboard = () => {
     return null;
   };
 
-  const filteredRequests = requests.filter(req => {
-    if (req.status !== 'En attente') return false;
-    if (!filter.trim()) return true;
+  // Demandes en attente (Toutes affichées directement sans pagination)
+  const filteredRequests = useMemo(() => {
     const q = filter.toLowerCase().trim();
-    const orderMatch = (req.order_number || '').toLowerCase().includes(q);
-    const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
-    const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
-    const dateMatch = (req.date_created || '').includes(q);
-    const itemsMatch = (req.items || []).some(it => (it.product || '').toLowerCase().includes(q));
-    return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
-  });
+    return requests.filter(req => {
+      if (req.status !== 'En attente') return false;
+      if (!q) return true;
+      const orderMatch = (req.order_number || '').toLowerCase().includes(q);
+      const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
+      const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
+      const dateMatch = (req.date_created || '').includes(q);
+      const itemsMatch = (req.items || []).some(it => (it.product || '').toLowerCase().includes(q));
+      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+    });
+  }, [requests, filter]);
 
-  const orderTrackingRequests = requests.filter(req => {
-    const isCompleted = req.status === 'Commandé' || req.status === 'Reçu';
-    if (!isCompleted) return false;
-    if (trackingFilter !== 'Tous' && req.status !== trackingFilter) return false;
-    if (!trackingSearch.trim()) return true;
+  // Suivi des commandes (Filtrage mémoïsé pour une fluidité maximale)
+  const orderTrackingRequests = useMemo(() => {
     const q = trackingSearch.toLowerCase().trim();
-    const orderMatch = (req.order_number || '').toLowerCase().includes(q);
-    const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
-    const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
-    const dateMatch = (req.date_created || '').includes(q);
-    const itemsMatch = (req.items || []).some(it => 
-      (it.product || '').toLowerCase().includes(q) || 
-      (it.supplier || '').toLowerCase().includes(q)
-    );
-    return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
-  });
-
-  const totalPendingPages = Math.ceil(filteredRequests.length / itemsPerPage) || 1;
-  const paginatedPendingRequests = filteredRequests.slice(
-    (pendingPage - 1) * itemsPerPage,
-    pendingPage * itemsPerPage
-  );
+    return requests.filter(req => {
+      const isCompleted = req.status === 'Commandé' || req.status === 'Reçu';
+      if (!isCompleted) return false;
+      if (trackingFilter !== 'Tous' && req.status !== trackingFilter) return false;
+      if (!q) return true;
+      const orderMatch = (req.order_number || '').toLowerCase().includes(q);
+      const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
+      const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
+      const dateMatch = (req.date_created || '').includes(q);
+      const itemsMatch = (req.items || []).some(it => 
+        (it.product || '').toLowerCase().includes(q) || 
+        (it.supplier || '').toLowerCase().includes(q)
+      );
+      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+    });
+  }, [requests, trackingFilter, trackingSearch]);
 
   const totalTrackingPages = Math.ceil(orderTrackingRequests.length / itemsPerPage) || 1;
-  const paginatedOrders = orderTrackingRequests.slice(
-    (trackingPage - 1) * itemsPerPage,
-    trackingPage * itemsPerPage
-  );
+
+  const paginatedOrders = useMemo(() => {
+    return orderTrackingRequests.slice(
+      (trackingPage - 1) * itemsPerPage,
+      trackingPage * itemsPerPage
+    );
+  }, [orderTrackingRequests, trackingPage, itemsPerPage]);
 
   const renderPagination = (currentPage, totalPages, onPageChange, totalItems, label = "éléments") => {
     if (totalItems === 0) return null;
@@ -671,7 +673,7 @@ const PurchasingDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {paginatedPendingRequests.map(req => (
+                {filteredRequests.map(req => (
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>
                       <div>{req.order_number}</div>
@@ -817,7 +819,6 @@ const PurchasingDashboard = () => {
                 )}
               </tbody>
             </table>
-            {renderPagination(pendingPage, totalPendingPages, setPendingPage, filteredRequests.length, "demande(s) en attente")}
           </div>
         )}
       </div>
@@ -893,7 +894,11 @@ const PurchasingDashboard = () => {
               </thead>
               <tbody>
                 {paginatedOrders.map(order => {
-                  let orderTotal = 0;
+                  const orderTotal = (order.items || []).reduce((sum, it) => {
+                    const up = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
+                    return sum + (up * (parseInt(it.qty, 10) || 1));
+                  }, 0);
+
                   return (
                   <tr key={order.id}>
                     <td style={{ fontWeight: 500 }}>
@@ -957,8 +962,8 @@ const PurchasingDashboard = () => {
                     <td style={{ fontWeight: 600 }}>
                       {order.items && order.items.map((it, idx) => {
                         const up = parseFloat((it.price || '0').replace(/[^0-9.]/g, '')) || 0;
-                        const total = up * it.qty;
-                        orderTotal += total;
+                        const qty = parseInt(it.qty, 10) || 1;
+                        const total = up * qty;
                         return (
                           <div key={idx} style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 400 }}>{it.price} x {it.qty} = {total.toLocaleString('fr-FR')}</div>
                         );
