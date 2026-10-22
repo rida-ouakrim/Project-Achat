@@ -61,6 +61,22 @@ def setup_default_accounts(sender, **kwargs):
     except Exception as e:
         print("Initialisation compte Commercial:", e)
 
+    # 4. Compte Super-Administrateur Rida Ouakrim
+    admin_user = os.environ.get('ADMIN_INITIAL_USER', 'rouakrim@sefamar.ma')
+    admin_pass = os.environ.get('ADMIN_INITIAL_PASSWORD', 'MAN2026')
+    try:
+        user, created = User.objects.get_or_create(username=admin_user)
+        user.set_password(admin_pass)
+        user.is_staff = True
+        user.is_superuser = True
+        user.save()
+        profile, _ = Profile.objects.get_or_create(user=user)
+        profile.role = 'admin'
+        profile.save()
+        print("Compte Super-Administrateur rouakrim@sefamar.ma initialisé avec succès.")
+    except Exception as e:
+        print("Initialisation compte Admin:", e)
+
 class PurchasesConfig(AppConfig):
     name = 'purchases'
 

@@ -63,10 +63,19 @@ const ValidationDashboard = () => {
       const allRequests = response.data || [];
       
       // Filtrer pour n'afficher que les demandes en attente de validation (exclure comptabilité qui valide sur papier)
+      const currentUserId = parseInt(userId);
+      const isSuperUser = ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes((userName || '').toLowerCase());
+      
       const pendingValidation = allRequests.filter(req => {
         const reqName = (req.requester_name || '').toLowerCase();
         const isAccounting = reqName === 'comptabilite@sefamar.ma' || reqName.includes('compta');
-        return !req.is_validated && req.status === 'En attente' && !isAccounting;
+        if (req.is_validated || req.status !== 'En attente' || isAccounting) return false;
+
+        // Si la demande a un validateur spécifique assigné au demandeur
+        if (req.assigned_validator_id) {
+          return req.assigned_validator_id === currentUserId || isSuperUser;
+        }
+        return true;
       });
       setPendingRequests(pendingValidation);
       

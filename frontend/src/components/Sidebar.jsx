@@ -1,10 +1,11 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, ShoppingCart, BarChart3, BookOpen, CheckSquare } from 'lucide-react';
+import { User, ShoppingCart, BarChart3, BookOpen, CheckSquare, Shield } from 'lucide-react';
 
 const Sidebar = () => {
   const userRole = localStorage.getItem('userRole');
-  const userName = localStorage.getItem('userName');
+  const userName = (localStorage.getItem('userName') || '').toLowerCase();
+  const isAdmin = userRole === 'admin' || userName === 'rouakrim@sefamar.ma';
 
   return (
     <aside className="sidebar">
@@ -17,37 +18,48 @@ const Sidebar = () => {
       </div>
       
       <nav className="sidebar-nav">
-        <p className="sidebar-section-title">Rôles</p>
+        {isAdmin && (
+          <>
+            <p className="sidebar-section-title" style={{ color: '#ef4444', fontWeight: 'bold' }}>ADMINISTRATION</p>
+            <NavLink to="/admin-dashboard" className={({ isActive }) => `sidebar-link ${isActive ? 'active-admin' : ''}`} style={({ isActive }) => isActive ? { backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 600 } : { color: '#f87171' }}>
+              <Shield size={18} />
+              Superviseur Admin
+            </NavLink>
+            <div className="sidebar-section-divider">Espaces Métiers</div>
+          </>
+        )}
+
+        {!isAdmin && <p className="sidebar-section-title">Rôles</p>}
         
-        {(userRole === 'requester' || userRole === 'director') && (
+        {(isAdmin || userRole === 'requester' || userRole === 'director') && (
           <NavLink to="/requester" className={({ isActive }) => `sidebar-link ${isActive ? 'active-demandeur' : ''}`}>
             <User size={18} />
             Demandeur
           </NavLink>
         )}
 
-        {userRole === 'purchasing' && (
+        {(isAdmin || userRole === 'purchasing') && (
           <NavLink to="/purchasing" className={({ isActive }) => `sidebar-link ${isActive ? 'active-purchasing' : ''}`}>
             <ShoppingCart size={18} />
             Équipe Achats
           </NavLink>
         )}
 
-        {userRole === 'director' && (
+        {(isAdmin || userRole === 'director') && (
           <NavLink to="/director" className={({ isActive }) => `sidebar-link ${isActive ? 'active-directeur' : ''}`}>
             <BarChart3 size={18} />
             Tableau de bord
           </NavLink>
         )}
 
-        {(userRole === 'director' || ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'].includes(userName)) && (
+        {(isAdmin || userRole === 'director' || ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'man@sefamar.ma'].includes(userName)) && (
           <NavLink to="/validation" className={({ isActive }) => `sidebar-link ${isActive ? 'active-validation' : ''}`}>
             <CheckSquare size={18} />
             Validation
           </NavLink>
         )}
 
-        {(userRole === 'purchasing' || userRole === 'director') && (
+        {(isAdmin || userRole === 'purchasing' || userRole === 'director') && (
           <>
             <div className="sidebar-section-divider">
               Référentiels
@@ -59,7 +71,7 @@ const Sidebar = () => {
           </>
         )}
 
-        {(userRole === 'purchasing' || userRole === 'director' || userRole === 'ai_tools') && (
+        {(isAdmin || userRole === 'purchasing' || userRole === 'director' || userRole === 'ai_tools') && (
           <>
             <div className="sidebar-section-divider">
               Outils IA

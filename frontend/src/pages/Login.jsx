@@ -32,11 +32,21 @@ const Login = () => {
         localStorage.setItem('userName', user.username);
         
         // Redirection vers le tableau de bord autorisé
-        if (role === 'requester') navigate('/requester');
-        else if (role === 'purchasing') navigate('/purchasing');
-        else if (role === 'director') navigate('/director');
-        else if (role === 'ai_tools') navigate('/sourcing');
-        else navigate('/sourcing');
+        if (role === 'admin' || (user.username && user.username.toLowerCase() === 'rouakrim@sefamar.ma')) {
+          navigate('/admin-dashboard');
+        } else if (role === 'requester') {
+          navigate('/requester');
+        } else if (role === 'purchasing') {
+          navigate('/purchasing');
+        } else if (role === 'director') {
+          navigate('/director');
+        } else if (role === 'validator') {
+          navigate('/validation');
+        } else if (role === 'ai_tools') {
+          navigate('/sourcing');
+        } else {
+          navigate('/admin-dashboard');
+        }
       }
     } catch (err) {
       console.error("Erreur Auth:", err);

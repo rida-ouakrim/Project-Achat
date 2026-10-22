@@ -17,6 +17,7 @@ class UserViewSet(viewsets.ModelViewSet):
         username = request.data.get('username')
         password = request.data.get('password')
         role = request.data.get('role', 'requester')
+        validator_id = request.data.get('validator_id')
 
         if not username or not password:
             return Response({'error': "Le nom d'utilisateur et le mot de passe sont requis."}, status=status.HTTP_400_BAD_REQUEST)
@@ -25,10 +26,39 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'error': "Cet utilisateur existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
 
         user = User.objects.create_user(username=username, password=password)
-        Profile.objects.create(user=user, role=role)
+        val_obj = None
+        if validator_id:
+            val_obj = User.objects.filter(id=validator_id).first()
+        Profile.objects.create(user=user, role=role, validator=val_obj)
         
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post', 'patch'])
+    def update_role_validator(self, request, pk=None):
+        user = self.get_object()
+        role = request.data.get('role')
+        profile, _ = Profile.objects.get_or_create(user=user)
+        if role:
+            profile.role = role
+        
+        if 'validator_id' in request.data:
+            validator_id = request.data.get('validator_id')
+            if validator_id:
+                val_user = User.objects.filter(id=validator_id).first()
+                profile.validator = val_user
+            else:
+                profile.validator = None
+        profile.save()
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user.username in ['rouakrim@sefamar.ma', 'achat@sefamar.ma', 'man@sefamar.ma']:
+            return Response({'error': "Impossible de supprimer ce compte système principal."}, status=status.HTTP_400_BAD_REQUEST)
+        user.delete()
+        return Response({'success': "Utilisateur supprimé avec succès."}, status=status.HTTP_200_OK)
 
     @action(detail=True, methods=['post'])
     def reset_password(self, request, pk=None):
@@ -47,6 +77,11 @@ class UserViewSet(viewsets.ModelViewSet):
         if not username or not password:
             return Response({'error': "Nom d'utilisateur et mot de passe requis."}, status=status.HTTP_400_BAD_REQUEST)
         
+        username = str(username).strip()
+        matched_user = User.objects.filter(username__iexact=username).first()
+        if matched_user:
+            username = matched_user.username
+
         user = authenticate(username=username, password=password)
         if user is not None:
             # Générer les jetons JWT SimpleJWT
@@ -196,13 +231,28 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     message=f"La demande {instance.order_number} de {validator_name} a été validée automatiquement et est prête pour achat."
                 )
         else:
-            # Notify validators: Mme EL MANSOURI, Chadi Ismail and Mme BENELHASSANE
-            validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
-            for val in validators:
+            # Check if requester has a designated validator
+            assigned_val = getattr(getattr(instance.requester, 'profile', None), 'validator', None)
+            if assigned_val:
                 Notification.objects.create(
-                    user=val,
-                    message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} en attente de validation."
+                    user=assigned_val,
+                    message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} vous étant assignée en attente de validation."
                 )
+                # Also notify Mme EL MANSOURI (DG) for visibility
+                dg = User.objects.filter(username='man@sefamar.ma').first()
+                if dg and dg.id != assigned_val.id:
+                    Notification.objects.create(
+                        user=dg,
+                        message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} (assignée à {assigned_val.username})."
+                    )
+            else:
+                # Notify default validators: Mme EL MANSOURI, Chadi Ismail and Mme BENELHASSANE
+                validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
+                for val in validators:
+                    Notification.objects.create(
+                        user=val,
+                        message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} en attente de validation."
+                    )
 
     def update(self, request, *args, **kwargs):
         partial = kwargs.pop('partial', False)

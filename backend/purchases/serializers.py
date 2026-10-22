@@ -3,16 +3,20 @@ from django.contrib.auth.models import User
 from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem, SourcingHistory, QuoteComparisonHistory, Notification
 
 class ProfileSerializer(serializers.ModelSerializer):
+    validator_name = serializers.ReadOnlyField(source='validator.username')
+    validator_id = serializers.ReadOnlyField(source='validator.id')
+
     class Meta:
         model = Profile
-        fields = ['role']
+        fields = ['role', 'validator', 'validator_id', 'validator_name']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
+    date_joined = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M")
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'profile']
+        fields = ['id', 'username', 'email', 'profile', 'date_joined', 'is_active']
 
 class SupplierCatalogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -27,6 +31,8 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
+    assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
+    assigned_validator_name = serializers.ReadOnlyField(source='requester.profile.validator.username')
     items = PurchaseItemSerializer(many=True)
 
     class Meta:
@@ -35,7 +41,8 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'requester', 'requester_name', 
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
-            'is_validated', 'validated_by', 'validated_by_name'
+            'is_validated', 'validated_by', 'validated_by_name',
+            'assigned_validator_id', 'assigned_validator_name'
         ]
         read_only_fields = ['order_number', 'date_created']
 

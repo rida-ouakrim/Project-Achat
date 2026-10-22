@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck } from 'lucide-react';
+import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, updateRequest, createUser, fetchCatalog, createCatalog, updateCatalog, deleteCatalog, validateRequest } from '../api';
 
@@ -40,8 +40,12 @@ const PurchasingDashboard = () => {
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState(null);
  
-  // State for filtering tracking table
+  // State for filtering tracking table & pagination
   const [trackingFilter, setTrackingFilter] = useState('Tous');
+  const [trackingSearch, setTrackingSearch] = useState('');
+  const [pendingPage, setPendingPage] = useState(1);
+  const [trackingPage, setTrackingPage] = useState(1);
+  const itemsPerPage = 8;
 
   const userId = localStorage.getItem('userId');
 
@@ -73,14 +77,171 @@ const PurchasingDashboard = () => {
     loadRequests();
   }, []);
  
-  const filteredRequests = requests.filter(
-    req => req.status === 'En attente' && req.requester_name.toLowerCase().includes(filter.toLowerCase())
+  const formatDate = (dateStr) => {
+    if (!dateStr) return '-';
+    const parts = dateStr.split('-');
+    return parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dateStr;
+  };
+
+  const getRelativeDelay = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const created = new Date(dateStr);
+      const now = new Date();
+      created.setHours(0, 0, 0, 0);
+      now.setHours(0, 0, 0, 0);
+      const diffDays = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24));
+      if (diffDays === 0) return "Aujourd'hui";
+      if (diffDays === 1) return "Hier";
+      if (diffDays > 1) return `Il y a ${diffDays} j`;
+    } catch {
+      return null;
+    }
+    return null;
+  };
+
+  const filteredRequests = requests.filter(req => {
+    if (req.status !== 'En attente') return false;
+    if (!filter.trim()) return true;
+    const q = filter.toLowerCase().trim();
+    const orderMatch = (req.order_number || '').toLowerCase().includes(q);
+    const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
+    const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
+    const dateMatch = (req.date_created || '').includes(q);
+    const itemsMatch = (req.items || []).some(it => (it.product || '').toLowerCase().includes(q));
+    return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+  });
+
+  const orderTrackingRequests = requests.filter(req => {
+    const isCompleted = req.status === 'Commandé' || req.status === 'Reçu';
+    if (!isCompleted) return false;
+    if (trackingFilter !== 'Tous' && req.status !== trackingFilter) return false;
+    if (!trackingSearch.trim()) return true;
+    const q = trackingSearch.toLowerCase().trim();
+    const orderMatch = (req.order_number || '').toLowerCase().includes(q);
+    const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
+    const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
+    const dateMatch = (req.date_created || '').includes(q);
+    const itemsMatch = (req.items || []).some(it => 
+      (it.product || '').toLowerCase().includes(q) || 
+      (it.supplier || '').toLowerCase().includes(q)
+    );
+    return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+  });
+
+  const totalPendingPages = Math.ceil(filteredRequests.length / itemsPerPage) || 1;
+  const paginatedPendingRequests = filteredRequests.slice(
+    (pendingPage - 1) * itemsPerPage,
+    pendingPage * itemsPerPage
   );
- 
-  const orderTrackingRequests = requests.filter(
-    req => (req.status === 'Commandé' || req.status === 'Reçu') &&
-           (trackingFilter === 'Tous' || req.status === trackingFilter)
+
+  const totalTrackingPages = Math.ceil(orderTrackingRequests.length / itemsPerPage) || 1;
+  const paginatedOrders = orderTrackingRequests.slice(
+    (trackingPage - 1) * itemsPerPage,
+    trackingPage * itemsPerPage
   );
+
+  const renderPagination = (currentPage, totalPages, onPageChange, totalItems, label = "éléments") => {
+    if (totalItems === 0) return null;
+
+    const pages = [];
+    for (let i = 1; i <= totalPages; i++) {
+      if (
+        i === 1 || 
+        i === totalPages || 
+        (i >= currentPage - 1 && i <= currentPage + 1)
+      ) {
+        pages.push(i);
+      } else if (pages[pages.length - 1] !== '...') {
+        pages.push('...');
+      }
+    }
+
+    const startIdx = totalItems === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1;
+    const endIdx = Math.min(currentPage * itemsPerPage, totalItems);
+
+    return (
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: '1rem',
+        paddingTop: '0.85rem',
+        borderTop: '1px solid #e2e8f0',
+        flexWrap: 'wrap',
+        gap: '0.75rem'
+      }}>
+        <div style={{ fontSize: '0.8rem', color: '#64748b' }}>
+          Affichage de <strong>{startIdx}</strong> à <strong>{endIdx}</strong> sur <strong>{totalItems}</strong> {label}
+        </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={currentPage === 1}
+              onClick={() => onPageChange(currentPage - 1)}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.2rem',
+                cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                opacity: currentPage === 1 ? 0.45 : 1
+              }}
+            >
+              <ChevronLeft size={14} />
+              <span>Précédent</span>
+            </button>
+
+            {pages.map((p, idx) => (
+              p === '...' ? (
+                <span key={idx} style={{ padding: '0 0.25rem', color: '#94a3b8', fontSize: '0.8rem' }}>...</span>
+              ) : (
+                <button
+                  key={idx}
+                  type="button"
+                  className={`btn ${currentPage === p ? 'btn-primary' : 'btn-outline'}`}
+                  onClick={() => onPageChange(p)}
+                  style={{
+                    padding: '0.25rem 0.6rem',
+                    fontSize: '0.75rem',
+                    minWidth: '30px',
+                    backgroundColor: currentPage === p ? 'var(--color-primary)' : 'transparent',
+                    color: currentPage === p ? '#ffffff' : 'var(--color-text)',
+                    borderColor: currentPage === p ? 'var(--color-primary)' : '#cbd5e1'
+                  }}
+                >
+                  {p}
+                </button>
+              )
+            ))}
+
+            <button
+              type="button"
+              className="btn btn-outline"
+              disabled={currentPage === totalPages}
+              onClick={() => onPageChange(currentPage + 1)}
+              style={{
+                padding: '0.25rem 0.5rem',
+                fontSize: '0.75rem',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.2rem',
+                cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                opacity: currentPage === totalPages ? 0.45 : 1
+              }}
+            >
+              <span>Suivant</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
  
   const handleDownloadRequest = (req) => {
     const itemsHtml = (req.items || []).map(it => `
@@ -469,17 +630,25 @@ const PurchasingDashboard = () => {
       )}
 
       <div className="card">
-        <div className="flex justify-between items-center mb-4">
-          <h3>Demandes d'achat (En attente)</h3>
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h3 style={{ margin: 0 }}>Demandes d'achat (En attente)</h3>
+            <span style={{ fontSize: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '0.2rem 0.6rem', borderRadius: '12px', fontWeight: 600, border: '1px solid #fde68a' }}>
+              {filteredRequests.length} demande(s)
+            </span>
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
             <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)' }} />
             <input 
               type="text" 
-              placeholder="Filtrer par demandeur..." 
+              placeholder="Rechercher par N°, demandeur, produit..." 
               value={filter}
-              onChange={(e) => setFilter(e.target.value)}
+              onChange={(e) => {
+                setFilter(e.target.value);
+                setPendingPage(1);
+              }}
               className="form-input" 
-              style={{ paddingLeft: '2.5rem', width: '250px' }}
+              style={{ paddingLeft: '2.5rem', width: '280px' }}
             />
           </div>
         </div>
@@ -492,6 +661,7 @@ const PurchasingDashboard = () => {
               <thead>
                 <tr>
                   <th>N° Commande</th>
+                  <th>Date</th>
                   <th>Demandeur</th>
                   <th>Produits (Qté)</th>
                   <th>Affectation</th>
@@ -501,7 +671,7 @@ const PurchasingDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredRequests.map(req => (
+                {paginatedPendingRequests.map(req => (
                   <tr key={req.id}>
                     <td style={{ fontWeight: 500 }}>
                       <div>{req.order_number}</div>
@@ -534,6 +704,16 @@ const PurchasingDashboard = () => {
                             <FileText size={12} />
                             <span>{req.requester_name && req.requester_name.toLowerCase().includes('compta') ? 'Voir feuille signée' : 'Voir pièce(s) jointe(s)'}</span>
                           </a>
+                        </div>
+                      )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
+                        {formatDate(req.date_created)}
+                      </div>
+                      {getRelativeDelay(req.date_created) && (
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                          {getRelativeDelay(req.date_created)}
                         </div>
                       )}
                     </td>
@@ -630,42 +810,70 @@ const PurchasingDashboard = () => {
                 ))}
                 {filteredRequests.length === 0 && (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                      Aucune demande en attente.
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                      {filter ? "Aucune demande ne correspond à votre recherche." : "Aucune demande en attente."}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            {renderPagination(pendingPage, totalPendingPages, setPendingPage, filteredRequests.length, "demande(s) en attente")}
           </div>
         )}
       </div>
 
       <div className="card mb-6" style={{ width: '100%' }}>
-        <div className="flex justify-between items-center mb-4">
-          <h3 style={{ margin: 0 }}>Suivi des Commandes</h3>
-          <div className="flex gap-1" style={{ backgroundColor: 'var(--color-bg)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
-            {['Tous', 'Commandé', 'Reçu'].map(status => (
-              <button
-                key={status}
-                type="button"
-                className={`btn ${trackingFilter === status ? 'btn-primary' : 'btn-outline'}`}
-                style={{
-                  padding: '0.25rem 0.75rem',
-                  fontSize: '0.75rem',
-                  border: 'none',
-                  borderRadius: 'var(--radius-sm)',
-                  backgroundColor: trackingFilter === status ? 'var(--color-primary)' : 'transparent',
-                  color: trackingFilter === status ? '#ffffff' : 'var(--color-text)',
-                  boxShadow: 'none'
+        <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
+          <div className="flex items-center gap-3">
+            <h3 style={{ margin: 0 }}>Suivi des Commandes</h3>
+            <span style={{ fontSize: '0.75rem', backgroundColor: '#f1f5f9', color: '#475569', padding: '0.2rem 0.6rem', borderRadius: '12px', fontWeight: 600, border: '1px solid #e2e8f0' }}>
+              {orderTrackingRequests.length} commande(s)
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap">
+            <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', color: 'var(--color-text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="Rechercher par N°, fournisseur, produit..." 
+                value={trackingSearch}
+                onChange={(e) => {
+                  setTrackingSearch(e.target.value);
+                  setTrackingPage(1);
                 }}
-                onClick={() => setTrackingFilter(status)}
-              >
-                {status === 'Tous' ? 'Tous' : status === 'Commandé' ? 'Commandées' : 'Reçues'}
-              </button>
-            ))}
+                className="form-input" 
+                style={{ paddingLeft: '2.5rem', width: '280px' }}
+              />
+            </div>
+
+            <div className="flex gap-1" style={{ backgroundColor: 'var(--color-bg)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
+              {['Tous', 'Commandé', 'Reçu'].map(status => (
+                <button
+                  key={status}
+                  type="button"
+                  className={`btn ${trackingFilter === status ? 'btn-primary' : 'btn-outline'}`}
+                  style={{
+                    padding: '0.25rem 0.75rem',
+                    fontSize: '0.75rem',
+                    border: 'none',
+                    borderRadius: 'var(--radius-sm)',
+                    backgroundColor: trackingFilter === status ? 'var(--color-primary)' : 'transparent',
+                    color: trackingFilter === status ? '#ffffff' : 'var(--color-text)',
+                    boxShadow: 'none'
+                  }}
+                  onClick={() => {
+                    setTrackingFilter(status);
+                    setTrackingPage(1);
+                  }}
+                >
+                  {status === 'Tous' ? 'Tous' : status === 'Commandé' ? 'Commandées' : 'Reçues'}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+
         {loading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Chargement du suivi...</p>
         ) : (
@@ -674,6 +882,8 @@ const PurchasingDashboard = () => {
               <thead>
                 <tr>
                   <th>N° Commande</th>
+                  <th>Date</th>
+                  <th>Demandeur</th>
                   <th>Produits</th>
                   <th>Fournisseurs</th>
                   <th>Prix Total</th>
@@ -682,7 +892,7 @@ const PurchasingDashboard = () => {
                 </tr>
               </thead>
               <tbody>
-                {orderTrackingRequests.map(order => {
+                {paginatedOrders.map(order => {
                   let orderTotal = 0;
                   return (
                   <tr key={order.id}>
@@ -714,6 +924,21 @@ const PurchasingDashboard = () => {
                           </a>
                         </div>
                       )}
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
+                        {formatDate(order.date_created)}
+                      </div>
+                      {getRelativeDelay(order.date_created) && (
+                        <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
+                          {getRelativeDelay(order.date_created)}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      <div style={{ fontSize: '0.85rem', color: '#0f172a' }}>
+                        {order.requester_name || '-'}
+                      </div>
                     </td>
                     <td>
                       <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
@@ -749,7 +974,7 @@ const PurchasingDashboard = () => {
                       <div className="flex gap-2 items-center">
                         <button 
                           className="btn btn-outline" 
-                          style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          style={{ padding: '0.25rem 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
                           onClick={() => {
                             setDetailsRequest(order);
                             setIsDetailsModalOpen(true);
@@ -781,13 +1006,14 @@ const PurchasingDashboard = () => {
                 )})}
                 {orderTrackingRequests.length === 0 && (
                   <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
-                      Aucune commande en cours de suivi.
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                      {trackingSearch ? "Aucune commande ne correspond à votre recherche." : "Aucune commande en cours de suivi."}
                     </td>
                   </tr>
                 )}
               </tbody>
             </table>
+            {renderPagination(trackingPage, totalTrackingPages, setTrackingPage, orderTrackingRequests.length, "commande(s)")}
           </div>
         )}
       </div>
