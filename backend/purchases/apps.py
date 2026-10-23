@@ -6,80 +6,26 @@ def setup_default_accounts(sender, **kwargs):
     from django.contrib.auth.models import User
     from .models import Profile
     
-    # 1. Compte Outils IA SEFACAR
-    username = os.environ.get('SEFACAR_INITIAL_USER', 'Ahmed@sefacar.ma')
-    init_password = os.environ.get('SEFACAR_INITIAL_PASSWORD', 'ahmed123')
-    try:
-        user, created = User.objects.get_or_create(username=username)
-        if created:
-            user.set_password(init_password)
-            user.save()
-            Profile.objects.create(user=user, role='ai_tools')
-        else:
-            profile, _ = Profile.objects.get_or_create(user=user)
-            if profile.role != 'ai_tools':
-                profile.role = 'ai_tools'
-                profile.save()
-    except Exception as e:
-        print("Initialisation compte SEFACAR:", e)
-
-    # 2. Compte Comptabilité (Demandeur Spécial - Validation sur feuille papier)
-    compta_user = os.environ.get('COMPTA_INITIAL_USER', 'comptabilite@sefamar.ma')
-    compta_pass = os.environ.get('COMPTA_INITIAL_PASSWORD', 'MAN2026')
-    try:
-        user, created = User.objects.get_or_create(username=compta_user)
-        if created:
-            user.set_password(compta_pass)
-            user.save()
-            Profile.objects.create(user=user, role='requester')
-            print("Compte Comptabilité créé avec succès.")
-        else:
-            profile, _ = Profile.objects.get_or_create(user=user)
-            if profile.role != 'requester':
-                profile.role = 'requester'
-                profile.save()
-    except Exception as e:
-        print("Initialisation compte Comptabilité:", e)
-
-    # 3. Compte Commercial (Demandeur - Validation Automatique)
-    com_user = os.environ.get('COMMERCIAL_INITIAL_USER', 'obelkadi.man@sefamar.ma')
-    com_pass = os.environ.get('COMMERCIAL_INITIAL_PASSWORD', 'obelkadi2026')
-    try:
-        user, created = User.objects.get_or_create(username=com_user)
-        if created:
-            user.set_password(com_pass)
-            user.save()
-            Profile.objects.create(user=user, role='requester')
-            print("Compte Commercial créé avec succès.")
-        else:
-            user.set_password(com_pass)
+    # Les comptes et mots de passe sont gérés via variables d'environnement ou directement en base de données.
+    # Aucun identifiant ni mot de passe n'est stocké en dur dans le code source.
+    admin_user = os.environ.get('ADMIN_INITIAL_USER')
+    admin_pass = os.environ.get('ADMIN_INITIAL_PASSWORD')
+    if admin_user and admin_pass:
+        try:
+            user, created = User.objects.get_or_create(username=admin_user)
+            if created:
+                user.set_password(admin_pass)
+            user.is_staff = True
+            user.is_superuser = True
             user.save()
             profile, _ = Profile.objects.get_or_create(user=user)
-            if profile.role != 'requester':
-                profile.role = 'requester'
-                profile.save()
-    except Exception as e:
-        print("Initialisation compte Commercial:", e)
-
-    # 4. Compte Super-Administrateur Rida Ouakrim
-    admin_user = os.environ.get('ADMIN_INITIAL_USER', 'rouakrim@sefamar.ma')
-    admin_pass = os.environ.get('ADMIN_INITIAL_PASSWORD', 'MAN2026')
-    try:
-        user, created = User.objects.get_or_create(username=admin_user)
-        user.set_password(admin_pass)
-        user.is_staff = True
-        user.is_superuser = True
-        user.save()
-        profile, _ = Profile.objects.get_or_create(user=user)
-        profile.role = 'admin'
-        profile.save()
-        print("Compte Super-Administrateur rouakrim@sefamar.ma initialisé avec succès.")
-    except Exception as e:
-        print("Initialisation compte Admin:", e)
+            profile.role = 'admin'
+            profile.save()
+        except Exception as e:
+            print("Configuration compte Admin:", e)
 
 class PurchasesConfig(AppConfig):
     name = 'purchases'
 
     def ready(self):
         post_migrate.connect(setup_default_accounts, sender=self)
-
