@@ -167,7 +167,7 @@ const RequesterDashboard = () => {
             th { background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
             td { font-size: 14px; }
             .sig-box { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .sig { border: 2px dashed #94a3b8; height: 130px; padding: 12px; border-radius: 8px; }
+            .sig { border: 2px dashed #94a3b8; height: 145px; padding: 12px; border-radius: 8px; }
             @media print { body { padding: 20px; } }
           </style>
         </head>
@@ -217,14 +217,16 @@ const RequesterDashboard = () => {
 
           <div class="sig-box">
             <div class="sig">
-              <div style="font-weight: 700; font-size: 12px; color: #475569;">1. VISA DEMANDEUR (Comptabilité)</div>
-              <div style="margin-top: 8px; font-size: 11px; color: #94a3b8;">Nom & Date :</div>
+              <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Signature du demandeur</div>
+              <div style="margin-top: 4px; font-size: 11px; color: #64748b; font-style: italic;">(Nom, prénom et date)</div>
+              <div style="margin-top: 15px; font-size: 11px; color: #94a3b8;">Nom & Prénom : ____________________</div>
+              <div style="margin-top: 10px; font-size: 11px; color: #94a3b8;">Date & Signature :</div>
             </div>
             <div class="sig" style="background-color: #faf5ff; border-color: #a855f7;">
-              <div style="font-weight: 700; font-size: 12px; color: #7e22ce;">2. VISA & SIGNATURE DU VALIDATEUR (Obligatoire)</div>
-              <div style="margin-top: 6px; font-size: 11px; color: #9333ea;">
-                Signature physique & Cachet autorisant la commande avant scan.
-              </div>
+              <div style="font-weight: 700; font-size: 13px; color: #7e22ce;">Signature du responsable</div>
+              <div style="margin-top: 4px; font-size: 11px; color: #9333ea; font-style: italic;">(Nom, prénom, date et cachet)</div>
+              <div style="margin-top: 15px; font-size: 11px; color: #9333ea;">Nom & Fonction : __________________</div>
+              <div style="margin-top: 10px; font-size: 11px; color: #9333ea;">Date, Signature & Cachet :</div>
             </div>
           </div>
 
