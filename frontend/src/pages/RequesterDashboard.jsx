@@ -219,14 +219,9 @@ const RequesterDashboard = () => {
             <div class="sig">
               <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Signature du demandeur</div>
               <div style="margin-top: 4px; font-size: 11px; color: #64748b; font-style: italic;">(Nom, prénom et date)</div>
-              <div style="margin-top: 15px; font-size: 11px; color: #94a3b8;">Nom & Prénom : ____________________</div>
-              <div style="margin-top: 10px; font-size: 11px; color: #94a3b8;">Date & Signature :</div>
             </div>
             <div class="sig" style="background-color: #faf5ff; border-color: #a855f7;">
               <div style="font-weight: 700; font-size: 13px; color: #7e22ce;">Signature du responsable</div>
-              <div style="margin-top: 4px; font-size: 11px; color: #9333ea; font-style: italic;">(Nom, prénom, date et cachet)</div>
-              <div style="margin-top: 15px; font-size: 11px; color: #9333ea;">Nom & Fonction : __________________</div>
-              <div style="margin-top: 10px; font-size: 11px; color: #9333ea;">Date, Signature & Cachet :</div>
             </div>
           </div>
 
