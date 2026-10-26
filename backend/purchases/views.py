@@ -289,27 +289,42 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     message=f"La demande {instance.order_number} de {validator_name} a été validée automatiquement et est prête pour achat."
                 )
         else:
-            # Check if requester has a designated validator
+            # Récupérer la société de la demande
+            req_company = instance.company or getattr(getattr(instance.requester, 'profile', None), 'company', 'SEFAMAR')
+
+            # 1. Vérifier si le demandeur a un validateur attitré
             assigned_val = getattr(getattr(instance.requester, 'profile', None), 'validator', None)
             if assigned_val:
                 Notification.objects.create(
                     user=assigned_val,
-                    message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} vous étant assignée en attente de validation."
+                    message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} vous étant assignée en attente de validation."
                 )
-                # Also notify Mme EL MANSOURI (DG) for visibility
-                dg = User.objects.filter(username='man@sefamar.ma').first()
-                if dg and dg.id != assigned_val.id:
-                    Notification.objects.create(
-                        user=dg,
-                        message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} (assignée à {assigned_val.username})."
-                    )
+                # Notifier la DG si société SEFAMAR
+                if req_company == 'SEFAMAR':
+                    dg = User.objects.filter(username='man@sefamar.ma').first()
+                    if dg and dg.id != assigned_val.id:
+                        Notification.objects.create(
+                            user=dg,
+                            message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} (assignée à {assigned_val.username})."
+                        )
             else:
-                # Notify default validators: Mme EL MANSOURI, Chadi Ismail and Mme BENELHASSANE
-                validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
+                # 2. Pas de validateur spécifique : notifier UNIQUEMENT les validateurs de la MÊME entreprise !
+                validators = User.objects.filter(
+                    profile__role__in=['validator', 'director'],
+                    profile__company__iexact=req_company
+                )
+                
+                # Si aucun validateur avec rôle explicite trouvé pour cette entreprise
+                if not validators.exists():
+                    if req_company == 'SEFAMAR':
+                        validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
+                    else:
+                        validators = User.objects.filter(profile__company__iexact=req_company)
+
                 for val in validators:
                     Notification.objects.create(
                         user=val,
-                        message=f"Nouvelle demande {instance.order_number} de {instance.requester.username} en attente de validation."
+                        message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} en attente de validation."
                     )
 
     def update(self, request, *args, **kwargs):

@@ -32,6 +32,10 @@ const ValidationDashboard = () => {
 
   const userId = localStorage.getItem('userId');
   const userName = localStorage.getItem('userName');
+  const userRole = localStorage.getItem('userRole');
+  const userCompany = (localStorage.getItem('userCompany') || 'SEFAMAR').toUpperCase();
+  const isSuperUser = ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes((userName || '').toLowerCase()) || userRole === 'admin';
+  const [companyFilter, setCompanyFilter] = useState('Tous');
 
   const getValidationDelay = (dateStr) => {
     if (!dateStr) return null;
@@ -64,14 +68,26 @@ const ValidationDashboard = () => {
       
       // Filtrer pour n'afficher que les demandes en attente de validation (exclure comptabilité qui valide sur papier)
       const currentUserId = parseInt(userId);
-      const isSuperUser = ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes((userName || '').toLowerCase());
       
       const pendingValidation = allRequests.filter(req => {
         const reqName = (req.requester_name || '').toLowerCase();
         const isAccounting = reqName === 'comptabilite@sefamar.ma' || reqName.includes('compta');
         if (req.is_validated || req.status !== 'En attente' || isAccounting) return false;
 
-        // Si la demande a un validateur spécifique assigné au demandeur
+        const reqCompany = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+
+        // 1. ISOLATION STRICTE ENTREPRISE :
+        // Le validateur de SOMABUS ne voit JAMAIS les demandes de SEFAMAR et vice-versa !
+        if (!isSuperUser && reqCompany !== userCompany) {
+          return false;
+        }
+
+        // Si super-utilisateur avec filtre entreprise actif
+        if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) {
+          return false;
+        }
+
+        // 2. Si la demande a un validateur spécifique assigné au demandeur
         if (req.assigned_validator_id) {
           return req.assigned_validator_id === currentUserId || isSuperUser;
         }
@@ -80,9 +96,13 @@ const ValidationDashboard = () => {
       setPendingRequests(pendingValidation);
       
       // Filtrer pour afficher l'historique des validations par ce validateur
-      const historyValidation = allRequests.filter(req => 
-        req.is_validated && (req.validated_by === parseInt(userId) || req.validated_by_name === userName)
-      );
+      const historyValidation = allRequests.filter(req => {
+        if (!req.is_validated) return false;
+        const reqCompany = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+        if (!isSuperUser && reqCompany !== userCompany) return false;
+        if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) return false;
+        return isSuperUser || req.validated_by === currentUserId || req.validated_by_name === userName;
+      });
       setHistoryRequests(historyValidation);
     } catch (err) {
       console.error(err);
@@ -94,7 +114,7 @@ const ValidationDashboard = () => {
 
   useEffect(() => {
     loadRequests();
-  }, []);
+  }, [companyFilter]);
 
   const handleValidate = async (id) => {
     setValidatingId(id);
@@ -225,7 +245,25 @@ const ValidationDashboard = () => {
 
       {activeTab === 'pending' ? (
         <div className="card accent-warning">
-          <h3>Demandes en attente de validation</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+            <h3 style={{ margin: 0 }}>Demandes en attente de validation</h3>
+            {isSuperUser && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société :</span>
+                <select 
+                  className="form-input" 
+                  value={companyFilter} 
+                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
+                >
+                  <option value="Tous">Toutes les Sociétés</option>
+                  <option value="SEFAMAR">SEFAMAR</option>
+                  <option value="SOMABUS">SOMABUS</option>
+                  <option value="CKD">CKD</option>
+                </select>
+              </div>
+            )}
+          </div>
           
           {loading ? (
             <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement des demandes...</p>
@@ -235,6 +273,7 @@ const ValidationDashboard = () => {
                 <thead>
                   <tr>
                     <th>N° Commande</th>
+                    <th>Entreprise</th>
                     <th>Date</th>
                     <th>Demandeur</th>
                     <th>Articles</th>
@@ -260,6 +299,21 @@ const ValidationDashboard = () => {
                             <span>Dossier PDF</span>
                           </a>
                         )}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {(() => {
+                          const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+                          const style = comp === 'SOMABUS' 
+                            ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
+                            : comp === 'CKD'
+                            ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
+                            : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
+                          return (
+                            <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              {comp}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 500 }}>
@@ -385,6 +439,7 @@ const ValidationDashboard = () => {
                 <thead>
                   <tr>
                     <th>N° Commande</th>
+                    <th>Entreprise</th>
                     <th>Date demande</th>
                     <th>Demandeur</th>
                     <th>Articles</th>
@@ -410,6 +465,21 @@ const ValidationDashboard = () => {
                             <span>Dossier PDF</span>
                           </a>
                         )}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {(() => {
+                          const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+                          const style = comp === 'SOMABUS' 
+                            ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
+                            : comp === 'CKD'
+                            ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
+                            : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
+                          return (
+                            <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              {comp}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 500 }}>
