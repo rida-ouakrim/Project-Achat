@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Edit2, Check, X, FileUp, Search, RefreshCw, Download, UserPlus, BookOpen, Tag, Plus, Trash2, FileText, ExternalLink, Eye, FileCheck, ChevronLeft, ChevronRight, Calendar, Building2, Filter } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, updateRequest, createUser, fetchCatalog, createCatalog, updateCatalog, deleteCatalog, validateRequest } from '../api';
 
@@ -45,6 +45,79 @@ const PurchasingDashboard = () => {
   const [trackingSearch, setTrackingSearch] = useState('');
   const [trackingPage, setTrackingPage] = useState(1);
   const itemsPerPage = 8;
+
+  // Filtrage par entreprise / société (Tous, SEFAMAR, SOMABUS, CKD)
+  const [companyFilter, setCompanyFilter] = useState('Tous');
+
+  // Helper pour identifier l'entreprise d'une demande
+  const getRequestCompany = (req) => {
+    if (!req) return 'SEFAMAR';
+    const comp = (req.company || req.requester_company || '').toUpperCase().trim();
+    if (comp.includes('SOMA')) return 'SOMABUS';
+    if (comp.includes('CKD')) return 'CKD';
+    return 'SEFAMAR';
+  };
+
+  const renderCompanyBadge = (comp) => {
+    if (comp === 'SOMABUS') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          padding: '0.2rem 0.55rem',
+          borderRadius: '6px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          backgroundColor: '#fef3c7',
+          color: '#92400e',
+          border: '1px solid #fde68a',
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap'
+        }}>
+          SOMABUS
+        </span>
+      );
+    }
+    if (comp === 'CKD') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          padding: '0.2rem 0.55rem',
+          borderRadius: '6px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          backgroundColor: '#f1f5f9',
+          color: '#334155',
+          border: '1px solid #cbd5e1',
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap'
+        }}>
+          CKD
+        </span>
+      );
+    }
+    return (
+      <span style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '0.25rem',
+        padding: '0.2rem 0.55rem',
+        borderRadius: '6px',
+        fontSize: '0.72rem',
+        fontWeight: 700,
+        backgroundColor: '#eff6ff',
+        color: '#1d4ed8',
+        border: '1px solid #bfdbfe',
+        letterSpacing: '0.02em',
+        whiteSpace: 'nowrap'
+      }}>
+        SEFAMAR
+      </span>
+    );
+  };
 
   const userId = localStorage.getItem('userId');
 
@@ -99,40 +172,71 @@ const PurchasingDashboard = () => {
     return null;
   };
 
-  // Demandes en attente (Toutes affichées directement sans pagination)
+  // Comptages des demandes par entreprise
+  const companyCounts = useMemo(() => {
+    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0 };
+    requests.forEach(req => {
+      const comp = getRequestCompany(req);
+      counts.Tous++;
+      if (comp === 'SOMABUS') counts.SOMABUS++;
+      else if (comp === 'CKD') counts.CKD++;
+      else counts.SEFAMAR++;
+    });
+    return counts;
+  }, [requests]);
+
+  const pendingCompanyCounts = useMemo(() => {
+    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0 };
+    requests.filter(req => req.status === 'En attente').forEach(req => {
+      const comp = getRequestCompany(req);
+      counts.Tous++;
+      if (comp === 'SOMABUS') counts.SOMABUS++;
+      else if (comp === 'CKD') counts.CKD++;
+      else counts.SEFAMAR++;
+    });
+    return counts;
+  }, [requests]);
+
+  // Demandes en attente (Filtrage par recherche et par entreprise)
   const filteredRequests = useMemo(() => {
     const q = filter.toLowerCase().trim();
     return requests.filter(req => {
       if (req.status !== 'En attente') return false;
+      const comp = getRequestCompany(req);
+      if (companyFilter !== 'Tous' && comp !== companyFilter) return false;
       if (!q) return true;
       const orderMatch = (req.order_number || '').toLowerCase().includes(q);
       const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
       const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
       const dateMatch = (req.date_created || '').includes(q);
+      const compMatch = comp.toLowerCase().includes(q);
       const itemsMatch = (req.items || []).some(it => (it.product || '').toLowerCase().includes(q));
-      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch || compMatch;
     });
-  }, [requests, filter]);
+  }, [requests, filter, companyFilter]);
 
-  // Suivi des commandes (Filtrage mémoïsé pour une fluidité maximale)
+  // Suivi des commandes (Filtrage mémoïsé par statut, recherche et entreprise)
   const orderTrackingRequests = useMemo(() => {
     const q = trackingSearch.toLowerCase().trim();
     return requests.filter(req => {
       const isCompleted = req.status === 'Commandé' || req.status === 'Reçu';
       if (!isCompleted) return false;
+      const comp = getRequestCompany(req);
+      if (companyFilter !== 'Tous' && comp !== companyFilter) return false;
       if (trackingFilter !== 'Tous' && req.status !== trackingFilter) return false;
       if (!q) return true;
       const orderMatch = (req.order_number || '').toLowerCase().includes(q);
       const requesterMatch = (req.requester_name || '').toLowerCase().includes(q);
       const assignmentMatch = (req.assignment || '').toLowerCase().includes(q);
       const dateMatch = (req.date_created || '').includes(q);
+      const compMatch = comp.toLowerCase().includes(q);
       const itemsMatch = (req.items || []).some(it => 
         (it.product || '').toLowerCase().includes(q) || 
         (it.supplier || '').toLowerCase().includes(q)
       );
-      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch;
+      return orderMatch || requesterMatch || assignmentMatch || dateMatch || itemsMatch || compMatch;
     });
-  }, [requests, trackingFilter, trackingSearch]);
+  }, [requests, trackingFilter, trackingSearch, companyFilter]);
 
   const totalTrackingPages = Math.ceil(orderTrackingRequests.length / itemsPerPage) || 1;
 
@@ -246,6 +350,15 @@ const PurchasingDashboard = () => {
   };
  
   const handleDownloadRequest = (req) => {
+    const comp = getRequestCompany(req);
+    const isSomabus = comp === 'SOMABUS';
+    const isCkd = comp === 'CKD';
+
+    // Nom du document lorsqu'il est téléchargé / enregistré au format PDF
+    const docTitle = `Demande_Achat_${comp}_${req.order_number}`;
+    const companyLogo = isSomabus ? '/somabus_logo.png' : '/logo.png';
+    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'MAN Truck & Bus Maroc (SEFAMAR)';
+
     const itemsHtml = (req.items || []).map(it => `
       <tr>
         <td style="font-weight: 600; color: #0f172a;">${it.product}</td>
@@ -257,7 +370,7 @@ const PurchasingDashboard = () => {
     const htmlContent = `
       <html>
         <head>
-          <title>Demande d'Achat ${req.order_number}</title>
+          <title>${docTitle}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
             body {
@@ -271,12 +384,13 @@ const PurchasingDashboard = () => {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              border-bottom: 2px solid #0f172a;
+              border-bottom: 2px solid ${isSomabus ? '#d97706' : '#0f172a'};
               padding-bottom: 20px;
               margin-bottom: 30px;
             }
             .logo {
-              height: 45px;
+              height: 48px;
+              max-width: 190px;
               object-fit: contain;
             }
             .title {
@@ -288,6 +402,14 @@ const PurchasingDashboard = () => {
               font-weight: 800;
               color: #0f172a;
               letter-spacing: -0.025em;
+            }
+            .title .company-tag {
+              font-size: 13px;
+              font-weight: 700;
+              color: ${isSomabus ? '#b45309' : '#1d4ed8'};
+              margin-top: 3px;
+              text-transform: uppercase;
+              letter-spacing: 0.05em;
             }
             .title p {
               margin: 5px 0 0 0;
@@ -384,9 +506,10 @@ const PurchasingDashboard = () => {
         </head>
         <body>
           <div class="header">
-            <img class="logo" src="/logo.png" alt="MAN Logo" />
+            <img class="logo" src="${companyLogo}" alt="${companyDisplayName} Logo" />
             <div class="title">
               <h1>DEMANDE D'ACHAT</h1>
+              <div class="company-tag">${companyDisplayName}</div>
               <p>Référence : ${req.order_number}</p>
             </div>
           </div>
@@ -394,12 +517,13 @@ const PurchasingDashboard = () => {
           <div class="details-grid">
             <div>
               <div class="section-title">Émetteur</div>
-              <div class="detail-item"><strong>MAN Truck & Bus Maroc</strong></div>
+              <div class="detail-item"><strong>${companyDisplayName}</strong></div>
               <div class="detail-item">Demandeur : <span>${req.requester_name}</span></div>
               <div class="detail-item">Affectation : <span>${req.assignment || 'Non spécifiée'}</span></div>
             </div>
             <div>
               <div class="section-title">Détails de la Demande</div>
+              <div class="detail-item">Société : <span>${comp}</span></div>
               <div class="detail-item">Date d'enregistrement : <span>${req.date_created}</span></div>
               <div class="detail-item">Validation : <span>${req.is_validated ? `Validé (${req.validated_by_name || 'Achats'})` : (req.requester_name && req.requester_name.toLowerCase().includes('compta')) ? 'Feuille papier signée' : 'En attente'}</span></div>
             </div>
@@ -426,8 +550,8 @@ const PurchasingDashboard = () => {
           ` : ''}
 
           <div class="footer-request">
-            <p>Ce document est une fiche de demande d'achat interne émise électroniquement par le système MAN Procurement.</p>
-            <p>&copy; ${new Date().getFullYear()} MAN Truck & Bus Maroc. Tous droits réservés.</p>
+            <p>Ce document est une fiche de demande d'achat interne émise électroniquement par le système de gestion des achats (${companyDisplayName}).</p>
+            <p>&copy; ${new Date().getFullYear()} ${companyDisplayName}. Tous droits réservés.</p>
           </div>
 
           <script>
@@ -631,10 +755,80 @@ const PurchasingDashboard = () => {
         </div>
       )}
 
+      {/* Barre de filtrage par Entreprise */}
+      <div className="card mb-4" style={{ padding: '0.85rem 1.25rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        <div className="flex justify-between items-center flex-wrap gap-3">
+          <div className="flex items-center gap-2">
+            <Building2 size={18} style={{ color: '#0f172a' }} />
+            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#0f172a' }}>Filtrer par Entreprise :</span>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {[
+              { id: 'Tous', label: 'Toutes les demandes', count: companyCounts.Tous, pending: pendingCompanyCounts.Tous },
+              { id: 'SEFAMAR', label: 'SEFAMAR (MAN Maroc)', count: companyCounts.SEFAMAR, pending: pendingCompanyCounts.SEFAMAR },
+              { id: 'SOMABUS', label: 'SOMABUS', count: companyCounts.SOMABUS, pending: pendingCompanyCounts.SOMABUS },
+              { id: 'CKD', label: 'CKD', count: companyCounts.CKD, pending: pendingCompanyCounts.CKD },
+            ].map(tab => {
+              const isActive = companyFilter === tab.id;
+              const isSoma = tab.id === 'SOMABUS';
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => {
+                    setCompanyFilter(tab.id);
+                    setTrackingPage(1);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    padding: '0.45rem 0.9rem',
+                    borderRadius: '8px',
+                    fontSize: '0.825rem',
+                    fontWeight: isActive ? 700 : 500,
+                    border: isActive 
+                      ? (isSoma ? '2px solid #b45309' : '2px solid #0f172a') 
+                      : '1px solid #cbd5e1',
+                    backgroundColor: isActive 
+                      ? (isSoma ? '#fef3c7' : '#0f172a') 
+                      : '#f8fafc',
+                    color: isActive 
+                      ? (isSoma ? '#92400e' : '#ffffff') 
+                      : '#334155',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isActive ? '0 2px 4px rgba(0,0,0,0.1)' : 'none'
+                  }}
+                >
+                  <span>{tab.label}</span>
+                  <span style={{
+                    fontSize: '0.72rem',
+                    padding: '0.1rem 0.45rem',
+                    borderRadius: '999px',
+                    fontWeight: 700,
+                    backgroundColor: isActive 
+                      ? (isSoma ? '#fde68a' : 'rgba(255,255,255,0.25)') 
+                      : '#e2e8f0',
+                    color: isActive 
+                      ? (isSoma ? '#78350f' : '#ffffff') 
+                      : '#475569'
+                  }}>
+                    {tab.pending > 0 ? `${tab.pending} en attente` : `${tab.count}`}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
       <div className="card">
         <div className="flex justify-between items-center mb-4 flex-wrap gap-3">
           <div className="flex items-center gap-3">
-            <h3 style={{ margin: 0 }}>Demandes d'achat (En attente)</h3>
+            <h3 style={{ margin: 0 }}>
+              Demandes d'achat (En attente) {companyFilter !== 'Tous' && <span style={{ color: companyFilter === 'SOMABUS' ? '#b45309' : '#1d4ed8' }}>— {companyFilter}</span>}
+            </h3>
             <span style={{ fontSize: '0.75rem', backgroundColor: '#fef3c7', color: '#92400e', padding: '0.2rem 0.6rem', borderRadius: '12px', fontWeight: 600, border: '1px solid #fde68a' }}>
               {filteredRequests.length} demande(s)
             </span>
@@ -647,7 +841,6 @@ const PurchasingDashboard = () => {
               value={filter}
               onChange={(e) => {
                 setFilter(e.target.value);
-                setPendingPage(1);
               }}
               className="form-input" 
               style={{ paddingLeft: '2.5rem', width: '280px' }}
@@ -663,6 +856,7 @@ const PurchasingDashboard = () => {
               <thead>
                 <tr>
                   <th>N° Commande</th>
+                  <th>Société</th>
                   <th>Date</th>
                   <th>Demandeur</th>
                   <th>Produits (Qté)</th>
@@ -708,6 +902,9 @@ const PurchasingDashboard = () => {
                           </a>
                         </div>
                       )}
+                    </td>
+                    <td>
+                      {renderCompanyBadge(getRequestCompany(req))}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
@@ -812,7 +1009,7 @@ const PurchasingDashboard = () => {
                 ))}
                 {filteredRequests.length === 0 && (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                       {filter ? "Aucune demande ne correspond à votre recherche." : "Aucune demande en attente."}
                     </td>
                   </tr>
@@ -883,6 +1080,7 @@ const PurchasingDashboard = () => {
               <thead>
                 <tr>
                   <th>N° Commande</th>
+                  <th>Société</th>
                   <th>Date</th>
                   <th>Demandeur</th>
                   <th>Produits</th>
@@ -929,6 +1127,9 @@ const PurchasingDashboard = () => {
                           </a>
                         </div>
                       )}
+                    </td>
+                    <td>
+                      {renderCompanyBadge(getRequestCompany(order))}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
@@ -1011,7 +1212,7 @@ const PurchasingDashboard = () => {
                 )})}
                 {orderTrackingRequests.length === 0 && (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>
                       {trackingSearch ? "Aucune commande ne correspond à votre recherche." : "Aucune commande en cours de suivi."}
                     </td>
                   </tr>
@@ -1338,6 +1539,10 @@ const PurchasingDashboard = () => {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '1rem' }}>
               <div className="grid grid-cols-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div>
+                  <p className="text-xs text-muted">Société</p>
+                  <div>{renderCompanyBadge(getRequestCompany(detailsRequest))}</div>
+                </div>
                 <div>
                   <p className="text-xs text-muted">Demandeur</p>
                   <p style={{ fontWeight: 600 }}>{detailsRequest.requester_name}</p>

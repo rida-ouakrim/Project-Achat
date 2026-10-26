@@ -138,6 +138,13 @@ const RequesterDashboard = () => {
 
   const handlePrintBlankForm = () => {
     const printWindow = window.open('', '_blank');
+    const userCompany = (localStorage.getItem('userCompany') || 'SEFAMAR').toUpperCase();
+    const isSomabus = userCompany.includes('SOMABUS');
+    const isCkd = userCompany.includes('CKD');
+    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'MAN Truck & Bus Maroc';
+    const companyLogo = isSomabus ? '/somabus_logo.png' : '/logo.png';
+    const docTitle = `Fiche_Demande_Achat_${isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'SEFAMAR'}`;
+
     const validItems = items.filter(it => it.product && it.product.trim());
     const rowsHtml = validItems.length > 0
       ? validItems.map(it => `
@@ -156,7 +163,7 @@ const RequesterDashboard = () => {
     const htmlContent = `
       <html>
         <head>
-          <title>Fiche de Demande d'Achat - Comptabilité</title>
+          <title>${docTitle}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
             body { font-family: 'Outfit', sans-serif; padding: 40px; color: #0f172a; margin: 0; }
@@ -174,17 +181,18 @@ const RequesterDashboard = () => {
         <body>
           <div class="header">
             <div>
-              <img src="/logo.png" style="height: 40px; object-fit: contain;" />
-              <div style="font-weight: 700; margin-top: 5px; font-size: 14px;">MAN Truck & Bus Maroc</div>
+              <img src="${companyLogo}" style="height: 42px; max-width: 180px; object-fit: contain;" />
+              <div style="font-weight: 700; margin-top: 5px; font-size: 14px;">${companyDisplayName}</div>
             </div>
             <div style="text-align: right;">
               <h1>DEMANDE D'ACHAT (FEUILLE PAPIER)</h1>
-              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">Service Comptabilité</p>
+              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">${companyDisplayName} — Service Comptabilité</p>
             </div>
           </div>
 
           <div class="grid">
             <div>
+              <p style="margin: 0 0 6px 0;"><strong>Société :</strong> ${companyDisplayName}</p>
               <p style="margin: 0 0 6px 0;"><strong>Demandeur :</strong> ${userName || 'Comptabilité'}</p>
               <p style="margin: 0;"><strong>Affectation :</strong> ${formData.assignment || 'À renseigner'}</p>
             </div>
