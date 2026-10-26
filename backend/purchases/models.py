@@ -59,10 +59,11 @@ class PurchaseRequest(models.Model):
     refusal_reason = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
-        if not self.company and self.requester and hasattr(self.requester, 'profile') and self.requester.profile.company:
-            self.company = self.requester.profile.company
-        if not self.department and self.requester and hasattr(self.requester, 'profile') and self.requester.profile.department:
-            self.department = self.requester.profile.department
+        if self.requester and hasattr(self.requester, 'profile') and self.requester.profile:
+            if self.requester.profile.company and (not self.company or (self.company == 'SEFAMAR' and self.requester.profile.company != 'SEFAMAR')):
+                self.company = self.requester.profile.company
+            if not self.department and self.requester.profile.department:
+                self.department = self.requester.profile.department
         if not self.order_number:
             import datetime
             year = datetime.datetime.now().year

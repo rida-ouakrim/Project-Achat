@@ -122,6 +122,14 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
+        # Hériter obligatoirement de l'entreprise et du service du demandeur
+        requester = validated_data.get('requester')
+        if requester and hasattr(requester, 'profile') and requester.profile:
+            if requester.profile.company:
+                validated_data['company'] = requester.profile.company
+            if requester.profile.department and not validated_data.get('department'):
+                validated_data['department'] = requester.profile.department
+
         request = PurchaseRequest.objects.create(**validated_data)
         for item_data in items_data:
             PurchaseItem.objects.create(request=request, **item_data)

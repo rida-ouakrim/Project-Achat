@@ -266,9 +266,14 @@ const RequesterDashboard = () => {
         return;
       }
 
+      const userComp = localStorage.getItem('userCompany') || '';
+      const userDept = localStorage.getItem('userDepartment') || '';
+
       if (requestFiles.length > 0) {
         const payload = new FormData();
         payload.append('requester', currentUserId);
+        if (userComp) payload.append('company', userComp);
+        if (userDept) payload.append('department', userDept);
         payload.append('assignment', formData.assignment);
         payload.append('observation', formData.observation || '');
         payload.append('status', 'En attente');
@@ -283,6 +288,8 @@ const RequesterDashboard = () => {
       } else {
         const payload = {
           requester: currentUserId,
+          company: userComp || undefined,
+          department: userDept || undefined,
           assignment: formData.assignment,
           observation: formData.observation || '',
           status: 'En attente',

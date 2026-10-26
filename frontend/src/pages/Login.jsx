@@ -31,6 +31,7 @@ const Login = () => {
         localStorage.setItem('userRole', role);
         localStorage.setItem('userName', user.username);
         localStorage.setItem('userCompany', user.profile?.company || 'SEFAMAR');
+        localStorage.setItem('userDepartment', user.profile?.department || '');
         
         // Redirection vers le tableau de bord autorisé
         if (role === 'admin' || (user.username && user.username.toLowerCase() === 'rouakrim@sefamar.ma')) {

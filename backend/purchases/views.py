@@ -349,7 +349,13 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
-        instance = serializer.save()
+        requester = serializer.validated_data.get('requester')
+        req_company = getattr(getattr(requester, 'profile', None), 'company', 'SEFAMAR')
+        req_dept = getattr(getattr(requester, 'profile', None), 'department', '')
+        instance = serializer.save(
+            company=req_company if req_company else 'SEFAMAR',
+            department=serializer.validated_data.get('department') or req_dept
+        )
         
         # 1. Vérifier si le demandeur appartient à l'équipe comptabilité (validation sur feuille papier)
         is_accounting = (

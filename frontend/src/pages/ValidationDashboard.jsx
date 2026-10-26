@@ -74,10 +74,20 @@ const ValidationDashboard = () => {
         const isAccounting = reqName === 'comptabilite@sefamar.ma' || reqName.includes('compta');
         if (req.is_validated || req.status !== 'En attente' || isAccounting) return false;
 
-        const reqCompany = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+        // La société effective du demandeur est prioritaire
+        const reqCompany = (req.requester_company || req.company || 'SEFAMAR').toUpperCase();
 
-        // 1. ISOLATION STRICTE ENTREPRISE :
-        // Le validateur de SOMABUS ne voit JAMAIS les demandes de SEFAMAR et vice-versa !
+        // 1. Si ce validateur est explicitement assigné au demandeur (par ID) :
+        // Le validateur attitré DOIT TOUJOURS voir la demande !
+        const rawAssigned = req.assigned_validator_ids || (req.assigned_validator_id ? [req.assigned_validator_id] : []);
+        const assignedIds = rawAssigned.map(id => parseInt(id)).filter(id => !isNaN(id));
+
+        if (assignedIds.length > 0) {
+          return assignedIds.includes(currentUserId) || isSuperUser;
+        }
+
+        // 2. Si aucun validateur spécifique : validation générale par entreprise
+        // Le validateur de SOMABUS voit toutes les demandes SOMABUS sans validateur attitré
         if (!isSuperUser && reqCompany !== userCompany) {
           return false;
         }
@@ -87,11 +97,6 @@ const ValidationDashboard = () => {
           return false;
         }
 
-        // 2. Si la demande a un ou plusieurs validateurs spécifiques assignés au demandeur
-        const assignedIds = req.assigned_validator_ids || (req.assigned_validator_id ? [req.assigned_validator_id] : []);
-        if (assignedIds.length > 0) {
-          return assignedIds.includes(currentUserId) || isSuperUser;
-        }
         return true;
       });
       setPendingRequests(pendingValidation);
@@ -99,7 +104,7 @@ const ValidationDashboard = () => {
       // Filtrer pour afficher l'historique des validations par ce validateur
       const historyValidation = allRequests.filter(req => {
         if (!req.is_validated) return false;
-        const reqCompany = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+        const reqCompany = (req.requester_company || req.company || 'SEFAMAR').toUpperCase();
         if (!isSuperUser && reqCompany !== userCompany) return false;
         if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) return false;
         return isSuperUser || req.validated_by === currentUserId || req.validated_by_name === userName;
