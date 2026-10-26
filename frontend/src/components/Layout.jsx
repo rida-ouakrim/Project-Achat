@@ -6,24 +6,29 @@ import FloatingChat from './FloatingChat';
 
 const Layout = () => {
   const userRole = localStorage.getItem('userRole');
-  const userName = localStorage.getItem('userName');
+  const userName = (localStorage.getItem('userName') || '').toLowerCase();
+  const isAdmin = userRole === 'admin' || userName === 'rouakrim@sefamar.ma';
   const location = useLocation();
 
-  if (!userRole) {
+  if (!userRole && !isAdmin) {
     return <Navigate to="/login" replace />;
   }
 
-  // Restriction stricte des routes par rôle (RBAC)
+  // Restriction des routes par rôle (RBAC)
   const path = location.pathname.replace('/', '');
   
+  const allPaths = ['admin-dashboard', 'director', 'purchasing', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'];
+
   const roleRouteMap = {
-    requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'].includes(userName) ? ['requester', 'validation'] : ['requester'],
-    purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
+    admin: allPaths,
     director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'],
+    purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
+    requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'man@sefamar.ma'].includes(userName) ? ['requester', 'validation'] : ['requester'],
+    validator: ['validation'],
     ai_tools: ['sourcing', 'compare-quotes']
   };
 
-  const allowedPaths = roleRouteMap[userRole] || ['sourcing'];
+  const allowedPaths = isAdmin ? allPaths : (roleRouteMap[userRole] || ['sourcing']);
   if (path && !allowedPaths.includes(path)) {
     return <Navigate to={allowedPaths[0] ? `/${allowedPaths[0]}` : '/sourcing'} replace />;
   }
@@ -37,8 +42,8 @@ const Layout = () => {
           <Outlet />
         </main>
       </div>
-      {/* Injecter le Chatbot intelligent pour le Directeur, l'Équipe Achats et Outils IA */}
-      {(userRole === 'director' || userRole === 'purchasing' || userRole === 'ai_tools') && <FloatingChat />}
+      {/* Injecter le Chatbot intelligent pour l'Admin, le Directeur, l'Équipe Achats et Outils IA */}
+      {(isAdmin || userRole === 'director' || userRole === 'purchasing' || userRole === 'ai_tools') && <FloatingChat />}
     </div>
   );
 };
