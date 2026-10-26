@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, UserPlus, Search, Filter, Shield, Key, Trash2, Edit3, 
   Building2, CheckCircle2, XCircle, FileText, ArrowUpDown, RefreshCw,
-  UserCheck, AlertTriangle, ChevronRight, Check, X
+  UserCheck, AlertTriangle, ChevronRight, Check, X, Briefcase
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { 
@@ -11,13 +11,24 @@ import {
 
 const COMPANIES = ['SEFAMAR', 'SOMABUS', 'CKD'];
 
+const STANDARD_DEPARTMENTS = [
+  { value: 'Magasinier', label: 'Magasinier (Pièces & Stock)', icon: '📦' },
+  { value: 'Atelier', label: 'Atelier (SAV & Maintenance)', icon: '🔧' },
+  { value: 'ADV', label: 'ADV (Administration Des Ventes)', icon: '📑' },
+  { value: 'Commercial', label: 'Commercial / Ventes', icon: '💼' },
+  { value: 'Comptabilité', label: 'Comptabilité / Finance', icon: '📊' },
+  { value: 'Informatique', label: 'Informatique / IT', icon: '💻' },
+  { value: 'Moyens Généraux', label: 'Moyens Généraux', icon: '🏢' },
+  { value: 'Direction', label: 'Direction Générale', icon: '👑' }
+];
+
 const ROLES = [
   { value: 'requester', label: 'Demandeur' },
   { value: 'validator', label: 'Validateur Responsable' },
   { value: 'purchasing', label: 'Équipe Achats' },
   { value: 'director', label: 'Directeur (DG)' },
   { value: 'admin', label: 'Administrateur Superviseur' },
-  { value: 'ai_tools', 'label': 'Outils IA' }
+  { value: 'ai_tools', label: 'Outils IA' }
 ];
 
 const getCompanyBadgeStyle = (company) => {
@@ -61,6 +72,7 @@ const UsersManagement = () => {
   const [search, setSearch] = useState('');
   const [companyFilter, setCompanyFilter] = useState('Tous');
   const [roleFilter, setRoleFilter] = useState('Tous');
+  const [departmentFilter, setDepartmentFilter] = useState('Tous');
 
   // Modal Création
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -69,6 +81,8 @@ const UsersManagement = () => {
     password: '',
     role: 'requester',
     company: 'SEFAMAR',
+    departmentSelect: '',
+    departmentCustom: '',
     validator_id: ''
   });
   const [creating, setCreating] = useState(false);
@@ -80,6 +94,8 @@ const UsersManagement = () => {
     username: '',
     role: 'requester',
     company: 'SEFAMAR',
+    departmentSelect: '',
+    departmentCustom: '',
     validator_id: '',
     password: '',
     is_active: true
@@ -122,26 +138,41 @@ const UsersManagement = () => {
     });
   }, [users]);
 
+  // Liste unique de tous les départements pour le filtre
+  const allDepartmentsList = useMemo(() => {
+    const list = new Set(STANDARD_DEPARTMENTS.map(d => d.value));
+    users.forEach(u => {
+      if (u.profile?.department && u.profile.department.trim()) {
+        list.add(u.profile.department.trim());
+      }
+    });
+    return Array.from(list);
+  }, [users]);
+
   // Filtrage des utilisateurs
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const username = (u.username || '').toLowerCase();
       const role = u.profile?.role || 'requester';
       const company = (u.profile?.company || 'SEFAMAR').toUpperCase();
+      const department = (u.profile?.department || '').trim();
       const validator = (u.profile?.validator_name || '').toLowerCase();
 
       const matchesSearch = 
         !search ||
         username.includes(search.toLowerCase()) ||
         validator.includes(search.toLowerCase()) ||
-        company.toLowerCase().includes(search.toLowerCase());
+        company.toLowerCase().includes(search.toLowerCase()) ||
+        department.toLowerCase().includes(search.toLowerCase());
 
       const matchesCompany = companyFilter === 'Tous' || company === companyFilter;
       const matchesRole = roleFilter === 'Tous' || role === roleFilter;
+      const matchesDept = departmentFilter === 'Tous' || 
+        (departmentFilter === 'Non renseigné' ? !department : department.toLowerCase() === departmentFilter.toLowerCase());
 
-      return matchesSearch && matchesCompany && matchesRole;
+      return matchesSearch && matchesCompany && matchesRole && matchesDept;
     });
-  }, [users, search, companyFilter, roleFilter]);
+  }, [users, search, companyFilter, roleFilter, departmentFilter]);
 
   // Statistiques
   const stats = useMemo(() => {
@@ -149,8 +180,9 @@ const UsersManagement = () => {
     const sefamar = users.filter(u => (u.profile?.company || 'SEFAMAR').toUpperCase() === 'SEFAMAR').length;
     const somabus = users.filter(u => (u.profile?.company || '').toUpperCase() === 'SOMABUS').length;
     const ckd = users.filter(u => (u.profile?.company || '').toUpperCase() === 'CKD').length;
+    const withDept = users.filter(u => u.profile?.department && u.profile.department.trim()).length;
     const totalRequests = users.reduce((acc, u) => acc + (u.requests_count || 0), 0);
-    return { total, sefamar, somabus, ckd, totalRequests };
+    return { total, sefamar, somabus, ckd, withDept, totalRequests };
   }, [users]);
 
   // Création d'un utilisateur
@@ -161,6 +193,14 @@ const UsersManagement = () => {
       return;
     }
 
+    // Déterminer le département final
+    let finalDept = '';
+    if (createForm.departmentSelect === 'custom') {
+      finalDept = createForm.departmentCustom.trim();
+    } else {
+      finalDept = createForm.departmentSelect.trim();
+    }
+
     setCreating(true);
     try {
       const payload = {
@@ -168,6 +208,7 @@ const UsersManagement = () => {
         password: createForm.password.trim(),
         role: createForm.role,
         company: createForm.company,
+        department: finalDept,
         validator_id: createForm.validator_id ? parseInt(createForm.validator_id) : null
       };
       await createUser(payload);
@@ -178,6 +219,8 @@ const UsersManagement = () => {
         password: '',
         role: 'requester',
         company: 'SEFAMAR',
+        departmentSelect: '',
+        departmentCustom: '',
         validator_id: ''
       });
       loadData();
@@ -191,11 +234,16 @@ const UsersManagement = () => {
 
   // Ouverture modal édition
   const handleOpenEdit = (user) => {
+    const userDept = user.profile?.department || '';
+    const isStandard = STANDARD_DEPARTMENTS.some(d => d.value.toLowerCase() === userDept.toLowerCase());
+    
     setEditForm({
       id: user.id,
       username: user.username,
       role: user.profile?.role || 'requester',
       company: user.profile?.company || 'SEFAMAR',
+      departmentSelect: isStandard ? userDept : (userDept ? 'custom' : ''),
+      departmentCustom: isStandard ? '' : userDept,
       validator_id: user.profile?.validator_id ? String(user.profile.validator_id) : '',
       password: '',
       is_active: user.is_active !== undefined ? user.is_active : true
@@ -208,12 +256,20 @@ const UsersManagement = () => {
     e.preventDefault();
     if (!editForm.id) return;
 
+    let finalDept = '';
+    if (editForm.departmentSelect === 'custom') {
+      finalDept = editForm.departmentCustom.trim();
+    } else {
+      finalDept = editForm.departmentSelect.trim();
+    }
+
     setUpdating(true);
     try {
       const payload = {
         username: editForm.username.trim(),
         role: editForm.role,
         company: editForm.company,
+        department: finalDept,
         validator_id: editForm.validator_id ? parseInt(editForm.validator_id) : null,
         is_active: editForm.is_active
       };
@@ -271,7 +327,7 @@ const UsersManagement = () => {
   };
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: '1.5rem', maxWidth: '1440px', margin: '0 auto' }}>
       
       {/* En-tête de la page */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -280,10 +336,10 @@ const UsersManagement = () => {
             <div style={{ padding: '0.5rem', backgroundColor: '#fee2e2', borderRadius: '10px', color: '#ef4444', display: 'flex' }}>
               <Users size={24} />
             </div>
-            Espace Utilisateurs Multi-Entreprises
+            Espace Utilisateurs Multi-Entreprises & Services
           </h1>
           <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>
-            Gérez les comptes, les rôles, les validateurs et l'affectation par société (SEFAMAR, SOMABUS, CKD).
+            Gérez les comptes, les entreprises (SEFAMAR, SOMABUS, CKD), les services (Magasinier, Atelier, ADV...) et les validateurs.
           </p>
         </div>
 
@@ -309,7 +365,7 @@ const UsersManagement = () => {
       </div>
 
       {/* Cartes KPI Statistiques */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
         <div style={{ backgroundColor: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>TOTAL COMPTES</span>
@@ -348,22 +404,22 @@ const UsersManagement = () => {
 
         <div style={{ backgroundColor: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>DEMANDES CRÉÉES</span>
-            <FileText size={20} style={{ color: '#8b5cf6' }} />
+            <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>AVEC SERVICE DÉFINI</span>
+            <Briefcase size={20} style={{ color: '#059669' }} />
           </div>
-          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{stats.totalRequests}</div>
-          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Total des flux initiés</div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f172a' }}>{stats.withDept}</div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Départements renseignés</div>
         </div>
       </div>
 
       {/* Barre de filtres et recherche */}
       <div style={{ backgroundColor: '#ffffff', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1', minWidth: '280px' }}>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '380px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '360px' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
             <input 
               type="text"
-              placeholder="Rechercher par nom, email, validateur..."
+              placeholder="Rechercher par nom, service, validateur..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="form-input"
@@ -384,16 +440,33 @@ const UsersManagement = () => {
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Filtre Entreprise */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Entreprise:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société:</span>
             <select 
               value={companyFilter} 
               onChange={(e) => setCompanyFilter(e.target.value)}
               className="form-input"
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem', width: 'auto' }}
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
             >
-              <option value="Tous">Toutes les Entreprises</option>
+              <option value="Tous">Toutes les Sociétés</option>
               {COMPANIES.map(c => (
                 <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Filtre Département / Service */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Service:</span>
+            <select 
+              value={departmentFilter} 
+              onChange={(e) => setDepartmentFilter(e.target.value)}
+              className="form-input"
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
+            >
+              <option value="Tous">Tous les Services</option>
+              <option value="Non renseigné">-- Non renseigné --</option>
+              {allDepartmentsList.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
               ))}
             </select>
           </div>
@@ -405,7 +478,7 @@ const UsersManagement = () => {
               value={roleFilter} 
               onChange={(e) => setRoleFilter(e.target.value)}
               className="form-input"
-              style={{ padding: '0.4rem 0.75rem', fontSize: '0.875rem', width: 'auto' }}
+              style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
             >
               <option value="Tous">Tous les Rôles</option>
               {ROLES.map(r => (
@@ -436,6 +509,7 @@ const UsersManagement = () => {
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>UTILISATEUR</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>ENTREPRISE</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>SERVICE / DÉPARTEMENT</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>RÔLE MÉTIER</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>VALIDATEUR ATTITRÉ</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>DEMANDES</th>
@@ -446,6 +520,7 @@ const UsersManagement = () => {
               <tbody>
                 {filteredUsers.map((u) => {
                   const company = (u.profile?.company || 'SEFAMAR').toUpperCase();
+                  const department = (u.profile?.department || '').trim();
                   const role = u.profile?.role || 'requester';
                   const validatorName = u.profile?.validator_name;
                   const reqCount = u.requests_count || 0;
@@ -506,6 +581,31 @@ const UsersManagement = () => {
                         </span>
                       </td>
 
+                      {/* Service / Département */}
+                      <td style={{ padding: '0.9rem 1rem' }}>
+                        {department ? (
+                          <span style={{ 
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.35rem',
+                            padding: '0.25rem 0.6rem',
+                            backgroundColor: '#f8fafc',
+                            color: '#334155',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
+                          }}>
+                            <Briefcase size={12} style={{ color: '#64748b' }} />
+                            {department}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
+                            Non renseigné
+                          </span>
+                        )}
+                      </td>
+
                       {/* Rôle */}
                       <td style={{ padding: '0.9rem 1rem' }}>
                         <span style={{ 
@@ -529,7 +629,7 @@ const UsersManagement = () => {
                           </div>
                         ) : role === 'requester' ? (
                           <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                            Validation Globale (Mme EL MANSOURI / Chadi)
+                            Validateur {company}
                           </span>
                         ) : (
                           <span style={{ fontSize: '0.8rem', color: '#94a3b8' }}>-</span>
@@ -610,7 +710,7 @@ const UsersManagement = () => {
       {/* MODAL CRÉATION UTILISATEUR */}
       {isCreateOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '540px' }}>
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <div style={{ padding: '0.5rem', backgroundColor: '#eff6ff', color: '#2563eb', borderRadius: '8px' }}>
@@ -631,7 +731,7 @@ const UsersManagement = () => {
                   <label className="form-label" style={{ fontWeight: 600 }}>Nom d'utilisateur / Email *</label>
                   <input 
                     type="text" 
-                    placeholder="Ex: demandeur.somabus@sefamar.ma"
+                    placeholder="Ex: mohamed.magasin@sefamar.ma"
                     value={createForm.username}
                     onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
                     className="form-input"
@@ -686,6 +786,42 @@ const UsersManagement = () => {
                   </div>
                 </div>
 
+                {/* Service / Département (Optionnel avec choix prédéfini ou saisie manuelle) */}
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Briefcase size={16} />
+                      Service / Département
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>Optionnel</span>
+                  </label>
+                  <select 
+                    value={createForm.departmentSelect}
+                    onChange={(e) => setCreateForm({ ...createForm, departmentSelect: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="">-- Aucun service défini (Optionnel) --</option>
+                    {STANDARD_DEPARTMENTS.map(d => (
+                      <option key={d.value} value={d.value}>{d.icon} {d.label}</option>
+                    ))}
+                    <option value="custom">✏️ Autre service (Saisir manuellement)...</option>
+                  </select>
+
+                  {/* Champ de saisie manuelle si "custom" */}
+                  {createForm.departmentSelect === 'custom' && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <input 
+                        type="text"
+                        placeholder="Saisissez le nom du service (ex: Peinture, Qualité, etc.)..."
+                        value={createForm.departmentCustom}
+                        onChange={(e) => setCreateForm({ ...createForm, departmentCustom: e.target.value })}
+                        className="form-input"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* Rôle */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Rôle Métier *</label>
@@ -711,12 +847,14 @@ const UsersManagement = () => {
                     onChange={(e) => setCreateForm({ ...createForm, validator_id: e.target.value })}
                     className="form-input"
                   >
-                    <option value="">-- Aucun validateur spécifique (Validation standard) --</option>
-                    {potentialValidators.map(v => (
-                      <option key={v.id} value={v.id}>
-                        {v.username} ({getRoleLabel(v.profile?.role)} - {v.profile?.company || 'SEFAMAR'})
-                      </option>
-                    ))}
+                    <option value="">-- Aucun validateur spécifique (Validation par société {createForm.company}) --</option>
+                    {potentialValidators
+                      .filter(v => (v.profile?.company || 'SEFAMAR').toUpperCase() === createForm.company.toUpperCase() || ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes(v.username))
+                      .map(v => (
+                        <option key={v.id} value={v.id}>
+                          {v.username} ({getRoleLabel(v.profile?.role)} - {v.profile?.company || 'SEFAMAR'})
+                        </option>
+                      ))}
                   </select>
                   <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
                     Les demandes créées par cet utilisateur seront automatiquement soumises à ce responsable.
@@ -750,7 +888,7 @@ const UsersManagement = () => {
       {/* MODAL ÉDITION COMPLÈTE */}
       {isEditOpen && (
         <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '540px' }}>
+          <div className="modal-content" style={{ maxWidth: '560px' }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
                 <div style={{ padding: '0.5rem', backgroundColor: '#fef3c7', color: '#d97706', borderRadius: '8px' }}>
@@ -758,7 +896,7 @@ const UsersManagement = () => {
                 </div>
                 <div>
                   <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a' }}>Modifier l'Utilisateur</h3>
-                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Modification complète des permissions et de l'affectation</span>
+                  <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Modification complète des permissions, service et affectation</span>
                 </div>
               </div>
               <button onClick={() => setIsEditOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
@@ -815,6 +953,42 @@ const UsersManagement = () => {
                   </div>
                 </div>
 
+                {/* Service / Département */}
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                      <Briefcase size={16} />
+                      Service / Département
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>Optionnel</span>
+                  </label>
+                  <select 
+                    value={editForm.departmentSelect}
+                    onChange={(e) => setEditForm({ ...editForm, departmentSelect: e.target.value })}
+                    className="form-input"
+                  >
+                    <option value="">-- Aucun service défini (Optionnel) --</option>
+                    {STANDARD_DEPARTMENTS.map(d => (
+                      <option key={d.value} value={d.value}>{d.icon} {d.label}</option>
+                    ))}
+                    <option value="custom">✏️ Autre service (Saisir manuellement)...</option>
+                  </select>
+
+                  {/* Saisie manuelle */}
+                  {editForm.departmentSelect === 'custom' && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <input 
+                        type="text"
+                        placeholder="Saisissez le nom du service manuellement..."
+                        value={editForm.departmentCustom}
+                        onChange={(e) => setEditForm({ ...editForm, departmentCustom: e.target.value })}
+                        className="form-input"
+                        autoFocus
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* Rôle */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Rôle Métier *</label>
@@ -840,7 +1014,7 @@ const UsersManagement = () => {
                     onChange={(e) => setEditForm({ ...editForm, validator_id: e.target.value })}
                     className="form-input"
                   >
-                    <option value="">-- Aucun validateur spécifique (Validation standard) --</option>
+                    <option value="">-- Aucun validateur spécifique (Validation par société {editForm.company}) --</option>
                     {potentialValidators
                       .filter(v => v.id !== editForm.id)
                       .map(v => (

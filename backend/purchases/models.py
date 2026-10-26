@@ -18,10 +18,12 @@ class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='requester')
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
+    department = models.CharField(max_length=100, blank=True, default='')
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
 
     def __str__(self):
-        return f"{self.user.username} ({self.company} - {self.get_role_display()})"
+        dept_str = f" - {self.department}" if self.department else ""
+        return f"{self.user.username} ({self.company}{dept_str} - {self.get_role_display()})"
 
 
 class PurchaseRequest(models.Model):
@@ -40,6 +42,7 @@ class PurchaseRequest(models.Model):
     order_number = models.CharField(max_length=50, unique=True, editable=False)
     requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
+    department = models.CharField(max_length=100, blank=True, default='')
     assignment = models.TextField(blank=True, default='')
     observation = models.TextField(blank=True, null=True)
     date_created = models.DateField(auto_now_add=True)
@@ -55,6 +58,8 @@ class PurchaseRequest(models.Model):
     def save(self, *args, **kwargs):
         if not self.company and self.requester and hasattr(self.requester, 'profile') and self.requester.profile.company:
             self.company = self.requester.profile.company
+        if not self.department and self.requester and hasattr(self.requester, 'profile') and self.requester.profile.department:
+            self.department = self.requester.profile.department
         if not self.order_number:
             import datetime
             year = datetime.datetime.now().year

@@ -8,7 +8,7 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['role', 'company', 'validator', 'validator_id', 'validator_name']
+        fields = ['role', 'company', 'department', 'validator', 'validator_id', 'validator_name']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
@@ -38,6 +38,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
     requester_company = serializers.ReadOnlyField(source='requester.profile.company')
+    requester_department = serializers.ReadOnlyField(source='requester.profile.department')
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
     assigned_validator_name = serializers.ReadOnlyField(source='requester.profile.validator.username')
@@ -47,6 +48,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         model = PurchaseRequest
         fields = [
             'id', 'order_number', 'requester', 'requester_name', 'company', 'requester_company',
+            'department', 'requester_department',
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
             'is_validated', 'validated_by', 'validated_by_name',

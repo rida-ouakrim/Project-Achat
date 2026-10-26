@@ -18,6 +18,7 @@ class UserViewSet(viewsets.ModelViewSet):
         password = request.data.get('password')
         role = request.data.get('role', 'requester')
         company = request.data.get('company', 'SEFAMAR')
+        department = request.data.get('department', '').strip()
         validator_id = request.data.get('validator_id')
 
         if not username or not password:
@@ -31,7 +32,7 @@ class UserViewSet(viewsets.ModelViewSet):
         val_obj = None
         if validator_id:
             val_obj = User.objects.filter(id=validator_id).first()
-        Profile.objects.create(user=user, role=role, company=company, validator=val_obj)
+        Profile.objects.create(user=user, role=role, company=company, department=department, validator=val_obj)
         
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -42,6 +43,7 @@ class UserViewSet(viewsets.ModelViewSet):
         username = request.data.get('username')
         role = request.data.get('role')
         company = request.data.get('company')
+        department = request.data.get('department')
         validator_id = request.data.get('validator_id')
         password = request.data.get('password')
         is_active = request.data.get('is_active')
@@ -65,12 +67,14 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.save()
 
-        # Mise à jour du profil (rôle, entreprise, validateur)
+        # Mise à jour du profil (rôle, entreprise, département/service, validateur)
         profile, _ = Profile.objects.get_or_create(user=user)
         if role:
             profile.role = role
         if company:
             profile.company = company
+        if department is not None:
+            profile.department = department.strip()
         if 'validator_id' in request.data:
             if validator_id:
                 val_user = User.objects.filter(id=validator_id).first()
@@ -87,11 +91,14 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         role = request.data.get('role')
         company = request.data.get('company')
+        department = request.data.get('department')
         profile, _ = Profile.objects.get_or_create(user=user)
         if role:
             profile.role = role
         if company:
             profile.company = company
+        if department is not None:
+            profile.department = department.strip()
         
         if 'validator_id' in request.data:
             validator_id = request.data.get('validator_id')
