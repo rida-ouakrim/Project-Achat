@@ -14,25 +14,52 @@ class UserViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny]
 
     def create(self, request, *args, **kwargs):
-        username = request.data.get('username')
+        full_name = str(request.data.get('full_name') or request.data.get('name') or '').strip()
+        email = str(request.data.get('email') or '').strip()
+        username = str(request.data.get('username') or '').strip()
         password = request.data.get('password')
         role = request.data.get('role', 'requester')
         company = request.data.get('company', 'SEFAMAR')
         department = request.data.get('department', '').strip()
         validator_id = request.data.get('validator_id')
 
-        if not username or not password:
-            return Response({'error': "Le nom d'utilisateur et le mot de passe sont requis."}, status=status.HTTP_400_BAD_REQUEST)
+        # Si username non fourni mais email fourni, username devient l'email
+        if not username and email:
+            username = email
+        elif not email and username and '@' in username:
+            email = username
+
+        if not username and not email:
+            return Response({'error': "L'adresse email est requise."}, status=status.HTTP_400_BAD_REQUEST)
+        if not password:
+            return Response({'error': "Le mot de passe est requis."}, status=status.HTTP_400_BAD_REQUEST)
 
         username = str(username).strip()
         if User.objects.filter(username__iexact=username).exists():
-            return Response({'error': "Cet utilisateur existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': f"L'utilisateur avec l'identifiant '{username}' existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(username=username, password=password, email=username if '@' in username else '')
+        name_parts = full_name.split(' ', 1) if full_name else ['', '']
+        first_name = name_parts[0]
+        last_name = name_parts[1] if len(name_parts) > 1 else ''
+
+        user = User.objects.create_user(
+            username=username, 
+            password=password, 
+            email=email,
+            first_name=first_name,
+            last_name=last_name
+        )
         val_obj = None
         if validator_id:
             val_obj = User.objects.filter(id=validator_id).first()
-        Profile.objects.create(user=user, role=role, company=company, department=department, validator=val_obj)
+        Profile.objects.create(
+            user=user, 
+            role=role, 
+            company=company, 
+            department=department, 
+            full_name=full_name,
+            validator=val_obj
+        )
         
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -40,6 +67,8 @@ class UserViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post', 'patch', 'put'])
     def update_full(self, request, pk=None):
         user = self.get_object()
+        full_name = request.data.get('full_name') if 'full_name' in request.data else request.data.get('name')
+        email = request.data.get('email')
         username = request.data.get('username')
         role = request.data.get('role')
         company = request.data.get('company')
@@ -48,14 +77,20 @@ class UserViewSet(viewsets.ModelViewSet):
         password = request.data.get('password')
         is_active = request.data.get('is_active')
 
+        # Mise à jour email et nom complet
+        if email is not None:
+            user.email = str(email).strip()
+        if full_name is not None:
+            name_parts = str(full_name).strip().split(' ', 1)
+            user.first_name = name_parts[0] if name_parts else ''
+            user.last_name = name_parts[1] if len(name_parts) > 1 else ''
+
         # Modification du nom d'utilisateur si renseigné et différent
-        if username and username.strip() and username.strip().lower() != user.username.lower():
-            new_username = username.strip()
+        if username and str(username).strip() and str(username).strip().lower() != user.username.lower():
+            new_username = str(username).strip()
             if User.objects.filter(username__iexact=new_username).exclude(id=user.id).exists():
                 return Response({'error': "Ce nom d'utilisateur est déjà utilisé par un autre compte."}, status=status.HTTP_400_BAD_REQUEST)
             user.username = new_username
-            if '@' in new_username:
-                user.email = new_username
 
         # Modification du mot de passe si renseigné
         if password and str(password).strip():
@@ -67,14 +102,16 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.save()
 
-        # Mise à jour du profil (rôle, entreprise, département/service, validateur)
+        # Mise à jour du profil (nom complet, rôle, entreprise, département/service, validateur)
         profile, _ = Profile.objects.get_or_create(user=user)
+        if full_name is not None:
+            profile.full_name = str(full_name).strip()
         if role:
             profile.role = role
         if company:
             profile.company = company
         if department is not None:
-            profile.department = department.strip()
+            profile.department = str(department).strip()
         if 'validator_id' in request.data:
             if validator_id:
                 val_user = User.objects.filter(id=validator_id).first()
@@ -137,6 +174,8 @@ class UserViewSet(viewsets.ModelViewSet):
         
         username = str(username).strip()
         matched_user = User.objects.filter(username__iexact=username).first()
+        if not matched_user:
+            matched_user = User.objects.filter(email__iexact=username).first()
         if matched_user:
             username = matched_user.username
 

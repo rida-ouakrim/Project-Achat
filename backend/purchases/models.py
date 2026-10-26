@@ -16,14 +16,16 @@ class Profile(models.Model):
         ('CKD', 'CKD'),
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    full_name = models.CharField(max_length=150, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='requester')
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
     department = models.CharField(max_length=100, blank=True, default='')
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
 
     def __str__(self):
+        name_str = f"{self.full_name} ({self.user.username})" if self.full_name else self.user.username
         dept_str = f" - {self.department}" if self.department else ""
-        return f"{self.user.username} ({self.company}{dept_str} - {self.get_role_display()})"
+        return f"{name_str} ({self.company}{dept_str} - {self.get_role_display()})"
 
 
 class PurchaseRequest(models.Model):

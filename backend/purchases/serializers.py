@@ -8,16 +8,23 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['role', 'company', 'department', 'validator', 'validator_id', 'validator_name']
+        fields = ['role', 'company', 'department', 'full_name', 'validator', 'validator_id', 'validator_name']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M")
     requests_count = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'profile', 'date_joined', 'is_active', 'requests_count']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'display_name', 'profile', 'date_joined', 'is_active', 'requests_count']
+
+    def get_display_name(self, obj):
+        if hasattr(obj, 'profile') and obj.profile.full_name:
+            return obj.profile.full_name
+        name = f"{obj.first_name} {obj.last_name}".strip()
+        return name if name else obj.username
 
     def get_requests_count(self, obj):
         try:

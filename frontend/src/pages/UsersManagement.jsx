@@ -77,7 +77,8 @@ const UsersManagement = () => {
   // Modal Création
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
-    username: '',
+    name: '',
+    email: '',
     password: '',
     role: 'requester',
     company: 'SEFAMAR',
@@ -91,7 +92,8 @@ const UsersManagement = () => {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [editForm, setEditForm] = useState({
     id: null,
-    username: '',
+    name: '',
+    email: '',
     role: 'requester',
     company: 'SEFAMAR',
     departmentSelect: '',
@@ -153,6 +155,8 @@ const UsersManagement = () => {
   const filteredUsers = useMemo(() => {
     return users.filter(u => {
       const username = (u.username || '').toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      const fullName = (u.profile?.full_name || u.display_name || '').toLowerCase();
       const role = u.profile?.role || 'requester';
       const company = (u.profile?.company || 'SEFAMAR').toUpperCase();
       const department = (u.profile?.department || '').trim();
@@ -161,6 +165,8 @@ const UsersManagement = () => {
       const matchesSearch = 
         !search ||
         username.includes(search.toLowerCase()) ||
+        email.includes(search.toLowerCase()) ||
+        fullName.includes(search.toLowerCase()) ||
         validator.includes(search.toLowerCase()) ||
         company.toLowerCase().includes(search.toLowerCase()) ||
         department.toLowerCase().includes(search.toLowerCase());
@@ -188,8 +194,8 @@ const UsersManagement = () => {
   // Création d'un utilisateur
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!createForm.username.trim() || !createForm.password.trim()) {
-      toast.error("Le nom d'utilisateur et le mot de passe sont obligatoires.");
+    if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim()) {
+      toast.error("Le nom complet, l'adresse email et le mot de passe sont obligatoires.");
       return;
     }
 
@@ -204,7 +210,10 @@ const UsersManagement = () => {
     setCreating(true);
     try {
       const payload = {
-        username: createForm.username.trim(),
+        name: createForm.name.trim(),
+        full_name: createForm.name.trim(),
+        email: createForm.email.trim(),
+        username: createForm.email.trim(),
         password: createForm.password.trim(),
         role: createForm.role,
         company: createForm.company,
@@ -212,10 +221,11 @@ const UsersManagement = () => {
         validator_id: createForm.validator_id ? parseInt(createForm.validator_id) : null
       };
       await createUser(payload);
-      toast.success(`Utilisateur ${createForm.username} créé avec succès !`);
+      toast.success(`Utilisateur ${createForm.name} (${createForm.email}) créé avec succès !`);
       setIsCreateOpen(false);
       setCreateForm({
-        username: '',
+        name: '',
+        email: '',
         password: '',
         role: 'requester',
         company: 'SEFAMAR',
@@ -236,10 +246,12 @@ const UsersManagement = () => {
   const handleOpenEdit = (user) => {
     const userDept = user.profile?.department || '';
     const isStandard = STANDARD_DEPARTMENTS.some(d => d.value.toLowerCase() === userDept.toLowerCase());
+    const fullName = user.profile?.full_name || user.display_name || ((user.first_name || '') + ' ' + (user.last_name || '')).trim() || user.username;
     
     setEditForm({
       id: user.id,
-      username: user.username,
+      name: fullName,
+      email: user.email || user.username,
       role: user.profile?.role || 'requester',
       company: user.profile?.company || 'SEFAMAR',
       departmentSelect: isStandard ? userDept : (userDept ? 'custom' : ''),
@@ -255,6 +267,10 @@ const UsersManagement = () => {
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     if (!editForm.id) return;
+    if (!editForm.name.trim() || !editForm.email.trim()) {
+      toast.error("Le nom complet et l'adresse email sont obligatoires.");
+      return;
+    }
 
     let finalDept = '';
     if (editForm.departmentSelect === 'custom') {
@@ -266,7 +282,10 @@ const UsersManagement = () => {
     setUpdating(true);
     try {
       const payload = {
-        username: editForm.username.trim(),
+        name: editForm.name.trim(),
+        full_name: editForm.name.trim(),
+        email: editForm.email.trim(),
+        username: editForm.email.trim(),
         role: editForm.role,
         company: editForm.company,
         department: finalDept,
@@ -507,7 +526,7 @@ const UsersManagement = () => {
             <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>UTILISATEUR</th>
+                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>UTILISATEUR (NOM & EMAIL)</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>ENTREPRISE</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>SERVICE / DÉPARTEMENT</th>
                   <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>RÔLE MÉTIER</th>
@@ -525,16 +544,18 @@ const UsersManagement = () => {
                   const validatorName = u.profile?.validator_name;
                   const reqCount = u.requests_count || 0;
                   const isProtected = ['rouakrim@sefamar.ma', 'achat@sefamar.ma', 'man@sefamar.ma'].includes(u.username);
+                  const fullName = u.profile?.full_name || u.display_name || ((u.first_name || '') + ' ' + (u.last_name || '')).trim() || u.username;
+                  const emailAddress = u.email || u.username;
 
                   return (
                     <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
                       
-                      {/* Utilisateur */}
+                      {/* Utilisateur (Nom + Email) */}
                       <td style={{ padding: '0.9rem 1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                           <div style={{ 
-                            width: '36px', 
-                            height: '36px', 
+                            width: '38px', 
+                            height: '38px', 
                             borderRadius: '50%', 
                             backgroundColor: '#eff6ff', 
                             color: '#2563eb', 
@@ -543,21 +564,24 @@ const UsersManagement = () => {
                             justifyContent: 'center', 
                             fontWeight: 700, 
                             fontSize: '0.9rem',
-                            border: '1px solid #bfdbfe'
+                            border: '1px solid #bfdbfe',
+                            flexShrink: 0
                           }}>
-                            {(u.username || 'U')[0].toUpperCase()}
+                            {(fullName || 'U')[0].toUpperCase()}
                           </div>
                           <div>
                             <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                              {u.username}
+                              {fullName}
                               {u.is_active === false && (
                                 <span style={{ fontSize: '0.7rem', backgroundColor: '#fee2e2', color: '#b91c1c', padding: '1px 6px', borderRadius: '4px', fontWeight: 500 }}>
                                   Inactif
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b' }}>
-                              ID #{u.id}
+                            <div style={{ fontSize: '0.78rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>{emailAddress}</span>
+                              <span style={{ color: '#cbd5e1' }}>•</span>
+                              <span style={{ color: '#94a3b8' }}>ID #{u.id}</span>
                             </div>
                           </div>
                         </div>
@@ -726,17 +750,36 @@ const UsersManagement = () => {
             <form onSubmit={handleCreateSubmit} style={{ marginTop: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
-                {/* Identifiant / Email */}
+                {/* Nom & Prénom */}
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Nom d'utilisateur / Email *</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Nom Complet (Nom & Prénom) *</label>
                   <input 
                     type="text" 
-                    placeholder="Ex: mohamed.magasin@sefamar.ma"
-                    value={createForm.username}
-                    onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                    placeholder="Ex: Mohamed Alami"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
                     className="form-input"
                     required
                   />
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
+                    Le nom et prénom qui apparaîtront sur les demandes et signatures.
+                  </span>
+                </div>
+
+                {/* Adresse Email */}
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Adresse Email (Identifiant de connexion) *</label>
+                  <input 
+                    type="email" 
+                    placeholder="Ex: m.alami@sefamar.ma"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    className="form-input"
+                    required
+                  />
+                  <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
+                    Sera utilisé pour se connecter à l'application et recevoir les notifications.
+                  </span>
                 </div>
 
                 {/* Mot de passe */}
@@ -850,11 +893,15 @@ const UsersManagement = () => {
                     <option value="">-- Aucun validateur spécifique (Validation par société {createForm.company}) --</option>
                     {potentialValidators
                       .filter(v => (v.profile?.company || 'SEFAMAR').toUpperCase() === createForm.company.toUpperCase() || ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes(v.username))
-                      .map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.username} ({getRoleLabel(v.profile?.role)} - {v.profile?.company || 'SEFAMAR'})
-                        </option>
-                      ))}
+                      .map(v => {
+                        const vName = v.profile?.full_name || v.display_name || v.username;
+                        const vMail = v.email || v.username;
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {vName} ({vMail}) - {getRoleLabel(v.profile?.role)}
+                          </option>
+                        );
+                      })}
                   </select>
                   <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem', display: 'block' }}>
                     Les demandes créées par cet utilisateur seront automatiquement soumises à ce responsable.
@@ -907,13 +954,27 @@ const UsersManagement = () => {
             <form onSubmit={handleEditSubmit} style={{ marginTop: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 
-                {/* Identifiant */}
+                {/* Nom & Prénom */}
                 <div>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Nom d'utilisateur / Email *</label>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Nom Complet (Nom & Prénom) *</label>
                   <input 
                     type="text" 
-                    value={editForm.username}
-                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                    placeholder="Ex: Mohamed Alami"
+                    value={editForm.name}
+                    onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                    className="form-input"
+                    required
+                  />
+                </div>
+
+                {/* Adresse Email */}
+                <div>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Adresse Email (Identifiant de connexion) *</label>
+                  <input 
+                    type="email" 
+                    placeholder="Ex: m.alami@sefamar.ma"
+                    value={editForm.email}
+                    onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                     className="form-input"
                     required
                   />
@@ -1017,11 +1078,15 @@ const UsersManagement = () => {
                     <option value="">-- Aucun validateur spécifique (Validation par société {editForm.company}) --</option>
                     {potentialValidators
                       .filter(v => v.id !== editForm.id)
-                      .map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.username} ({getRoleLabel(v.profile?.role)} - {v.profile?.company || 'SEFAMAR'})
-                        </option>
-                      ))}
+                      .map(v => {
+                        const vName = v.profile?.full_name || v.display_name || v.username;
+                        const vMail = v.email || v.username;
+                        return (
+                          <option key={v.id} value={v.id}>
+                            {vName} ({vMail}) - {getRoleLabel(v.profile?.role)}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
 
