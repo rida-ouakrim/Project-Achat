@@ -165,28 +165,28 @@ const RequesterDashboard = () => {
         <head>
           <title>${docTitle}</title>
           <style>
-            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap');
-            body { font-family: 'Outfit', sans-serif; padding: 40px; color: #0f172a; margin: 0; }
-            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 15px; margin-bottom: 25px; }
-            .header h1 { margin: 0; font-size: 22px; font-weight: 800; }
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&display=swap');
+            body { font-family: 'Outfit', sans-serif; padding: 40px; color: #000000; margin: 0; background: #ffffff; }
+            .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #000000; padding-bottom: 15px; margin-bottom: 25px; }
+            .header h1 { margin: 0; font-size: 24px; font-weight: 800; color: #000000; }
             .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 25px; }
             table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            th { background: #f8fafc; padding: 10px; border: 1px solid #cbd5e1; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-            td { font-size: 14px; }
+            th { background: #f1f5f9; padding: 10px; border: 1.5px solid #000000; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #000000; font-weight: 800; }
+            td { font-size: 14px; border: 1px solid #cbd5e1; color: #000000; }
             .sig-box { margin-top: 50px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
-            .sig { border: 2px dashed #94a3b8; height: 145px; padding: 12px; border-radius: 8px; }
+            .sig { border: 2px dashed #000000; height: 145px; padding: 12px; border-radius: 8px; }
             @media print { body { padding: 20px; } }
           </style>
         </head>
         <body>
           <div class="header">
             <div>
-              <img src="${companyLogo}" style="height: 42px; max-width: 180px; object-fit: contain;" />
-              <div style="font-weight: 700; margin-top: 5px; font-size: 14px;">${companyDisplayName}</div>
+              <img src="${companyLogo}" style="height: 70px; max-height: 80px; max-width: 260px; object-fit: contain;" />
+              <div style="font-weight: 800; margin-top: 6px; font-size: 15px; color: #000000;">${companyDisplayName}</div>
             </div>
             <div style="text-align: right;">
               <h1>DEMANDE D'ACHAT (FEUILLE PAPIER)</h1>
-              <p style="color: #64748b; margin: 4px 0 0 0; font-size: 13px;">${companyDisplayName} — Service Comptabilité</p>
+              <p style="color: #222222; margin: 4px 0 0 0; font-size: 13px; font-weight: 600;">${companyDisplayName} — Service Comptabilité</p>
             </div>
           </div>
 
@@ -202,7 +202,7 @@ const RequesterDashboard = () => {
             </div>
           </div>
 
-          <div style="font-size: 12px; text-transform: uppercase; font-weight: 700; color: #64748b; margin-top: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px;">
+          <div style="font-size: 12px; text-transform: uppercase; font-weight: 800; color: #000000; margin-top: 20px; border-bottom: 1.5px solid #000000; padding-bottom: 6px;">
             Désignation des Articles Demandés
           </div>
           <table>
@@ -218,23 +218,23 @@ const RequesterDashboard = () => {
           </table>
 
           ${formData.observation ? `
-            <div style="margin-top: 20px; font-size: 13px;">
+            <div style="margin-top: 20px; font-size: 13px; color: #000000;">
               <strong>Observation :</strong> ${formData.observation}
             </div>
           ` : ''}
 
           <div class="sig-box">
             <div class="sig">
-              <div style="font-weight: 700; font-size: 13px; color: #1e293b;">Signature du demandeur</div>
-              <div style="margin-top: 4px; font-size: 11px; color: #64748b; font-style: italic;">(Nom, prénom et date)</div>
+              <div style="font-weight: 700; font-size: 13px; color: #000000;">Signature du demandeur</div>
+              <div style="margin-top: 4px; font-size: 11px; color: #333333; font-style: italic;">(Nom, prénom et date)</div>
             </div>
-            <div class="sig" style="background-color: #faf5ff; border-color: #a855f7;">
-              <div style="font-weight: 700; font-size: 13px; color: #7e22ce;">Signature du responsable</div>
+            <div class="sig" style="background-color: #f8fafc; border-color: #000000;">
+              <div style="font-weight: 700; font-size: 13px; color: #000000;">Signature du responsable</div>
             </div>
           </div>
 
-          <p style="margin-top: 50px; text-align: center; font-size: 11px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px;">
-            Document officiel à faire signer puis à photographier/scanner pour téléversement sur le portail Achats MAN.
+          <p style="margin-top: 50px; text-align: center; font-size: 11px; color: #333333; border-top: 1px solid #000000; padding-top: 15px;">
+            Document officiel à faire signer puis à photographier/scanner pour téléversement sur le portail Achats ${companyDisplayName}.
           </p>
 
           <script>

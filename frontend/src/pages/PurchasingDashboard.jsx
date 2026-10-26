@@ -375,7 +375,7 @@ const PurchasingDashboard = () => {
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
             body {
               font-family: 'Outfit', sans-serif;
-              color: #1e293b;
+              color: #000000;
               margin: 0;
               padding: 40px;
               background-color: #ffffff;
@@ -384,13 +384,14 @@ const PurchasingDashboard = () => {
               display: flex;
               justify-content: space-between;
               align-items: center;
-              border-bottom: 2px solid ${isSomabus ? '#d97706' : '#0f172a'};
+              border-bottom: 2px solid #000000;
               padding-bottom: 20px;
               margin-bottom: 30px;
             }
             .logo {
-              height: 48px;
-              max-width: 190px;
+              height: 75px;
+              max-height: 85px;
+              max-width: 280px;
               object-fit: contain;
             }
             .title {
@@ -398,24 +399,24 @@ const PurchasingDashboard = () => {
             }
             .title h1 {
               margin: 0;
-              font-size: 24px;
+              font-size: 26px;
               font-weight: 800;
-              color: #0f172a;
+              color: #000000;
               letter-spacing: -0.025em;
             }
             .title .company-tag {
-              font-size: 13px;
-              font-weight: 700;
-              color: ${isSomabus ? '#b45309' : '#1d4ed8'};
-              margin-top: 3px;
+              font-size: 14px;
+              font-weight: 800;
+              color: #000000;
+              margin-top: 4px;
               text-transform: uppercase;
               letter-spacing: 0.05em;
             }
             .title p {
               margin: 5px 0 0 0;
-              color: #64748b;
+              color: #222222;
               font-size: 14px;
-              font-weight: 500;
+              font-weight: 600;
             }
             .details-grid {
               display: grid;
@@ -426,9 +427,9 @@ const PurchasingDashboard = () => {
             .section-title {
               font-size: 11px;
               text-transform: uppercase;
-              font-weight: 700;
-              color: #64748b;
-              border-bottom: 1px solid #e2e8f0;
+              font-weight: 800;
+              color: #000000;
+              border-bottom: 1.5px solid #000000;
               padding-bottom: 8px;
               margin-bottom: 12px;
               letter-spacing: 0.05em;
@@ -436,14 +437,14 @@ const PurchasingDashboard = () => {
             .detail-item {
               margin-bottom: 8px;
               font-size: 14px;
-              color: #334155;
+              color: #000000;
             }
             .detail-item strong {
-              color: #0f172a;
+              color: #000000;
             }
             .detail-item span {
               font-weight: 600;
-              color: #0f172a;
+              color: #000000;
             }
             .table-request {
               width: 100%;
@@ -451,29 +452,30 @@ const PurchasingDashboard = () => {
               margin-bottom: 50px;
             }
             .table-request th {
-              background-color: #f8fafc;
-              color: #475569;
-              font-weight: 700;
+              background-color: #f1f5f9;
+              color: #000000;
+              font-weight: 800;
               font-size: 11px;
               text-transform: uppercase;
               text-align: left;
               padding: 12px;
-              border-bottom: 2px solid #e2e8f0;
+              border-bottom: 2px solid #000000;
               letter-spacing: 0.05em;
             }
             .table-request td {
               padding: 16px 12px;
-              border-bottom: 1px solid #e2e8f0;
+              border-bottom: 1px solid #cbd5e1;
               font-size: 14px;
-              color: #334155;
+              color: #000000;
             }
             .observation-box {
               background-color: #f8fafc;
-              border: 1px solid #e2e8f0;
+              border: 1px solid #000000;
               padding: 15px;
               border-radius: 6px;
               margin-bottom: 40px;
               font-size: 14px;
+              color: #000000;
             }
             .signature-box {
               margin-top: 60px;
@@ -483,20 +485,20 @@ const PurchasingDashboard = () => {
               padding: 0 20px;
             }
             .signature {
-              border-top: 1px dashed #cbd5e1;
+              border-top: 1.5px dashed #000000;
               text-align: center;
               padding-top: 10px;
               font-size: 12px;
-              font-weight: 600;
-              color: #64748b;
+              font-weight: 700;
+              color: #000000;
             }
             .footer-request {
               margin-top: 50px;
-              border-top: 1px solid #e2e8f0;
+              border-top: 1px solid #000000;
               padding-top: 20px;
               text-align: center;
               font-size: 11px;
-              color: #94a3b8;
+              color: #333333;
               font-weight: 400;
             }
             @media print {
