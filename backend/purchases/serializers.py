@@ -2,13 +2,57 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import Profile, PurchaseRequest, SupplierCatalog, PurchaseItem, SourcingHistory, QuoteComparisonHistory, Notification
 
+from django.db import models
+
 class ProfileSerializer(serializers.ModelSerializer):
     validator_name = serializers.ReadOnlyField(source='validator.username')
     validator_id = serializers.ReadOnlyField(source='validator.id')
+    validator_ids = serializers.SerializerMethodField()
+    assigned_requester_ids = serializers.SerializerMethodField()
+    assigned_requesters = serializers.SerializerMethodField()
 
     class Meta:
         model = Profile
-        fields = ['role', 'company', 'department', 'full_name', 'validator', 'validator_id', 'validator_name']
+        fields = [
+            'role', 'company', 'department', 'full_name', 
+            'validator', 'validator_id', 'validator_name',
+            'validator_ids', 'assigned_requester_ids', 'assigned_requesters'
+        ]
+
+    def get_validator_ids(self, obj):
+        try:
+            ids = list(obj.validators.values_list('id', flat=True))
+            if obj.validator_id and obj.validator_id not in ids:
+                ids.append(obj.validator_id)
+            return ids
+        except Exception:
+            return []
+
+    def get_assigned_requester_ids(self, obj):
+        try:
+            user = obj.user
+            qs = Profile.objects.filter(models.Q(validator=user) | models.Q(validators=user)).distinct()
+            return list(qs.values_list('user_id', flat=True))
+        except Exception:
+            return []
+
+    def get_assigned_requesters(self, obj):
+        try:
+            user = obj.user
+            qs = Profile.objects.filter(models.Q(validator=user) | models.Q(validators=user)).select_related('user').distinct()
+            return [
+                {
+                    'id': p.user_id,
+                    'username': p.user.username,
+                    'display_name': p.full_name or p.user.get_full_name() or p.user.username,
+                    'email': p.user.email,
+                    'department': p.department,
+                    'company': p.company
+                }
+                for p in qs
+            ]
+        except Exception:
+            return []
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
@@ -49,6 +93,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
     assigned_validator_name = serializers.ReadOnlyField(source='requester.profile.validator.username')
+    assigned_validator_ids = serializers.SerializerMethodField()
     items = PurchaseItemSerializer(many=True)
 
     class Meta:
@@ -59,9 +104,21 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
             'is_validated', 'validated_by', 'validated_by_name',
-            'assigned_validator_id', 'assigned_validator_name'
+            'assigned_validator_id', 'assigned_validator_name', 'assigned_validator_ids'
         ]
         read_only_fields = ['order_number', 'date_created']
+
+    def get_assigned_validator_ids(self, obj):
+        try:
+            if hasattr(obj.requester, 'profile') and obj.requester.profile:
+                prof = obj.requester.profile
+                ids = list(prof.validators.values_list('id', flat=True))
+                if prof.validator_id and prof.validator_id not in ids:
+                    ids.append(prof.validator_id)
+                return ids
+            return []
+        except Exception:
+            return []
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])

@@ -21,6 +21,7 @@ class Profile(models.Model):
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
     department = models.CharField(max_length=100, blank=True, default='')
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
+    validators = models.ManyToManyField(User, blank=True, related_name='supervised_profiles')
 
     def __str__(self):
         name_str = f"{self.full_name} ({self.user.username})" if self.full_name else self.user.username

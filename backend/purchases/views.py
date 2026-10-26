@@ -1,3 +1,4 @@
+from django.db import models
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -22,6 +23,8 @@ class UserViewSet(viewsets.ModelViewSet):
         company = request.data.get('company', 'SEFAMAR')
         department = request.data.get('department', '').strip()
         validator_id = request.data.get('validator_id')
+        validator_ids = request.data.get('validator_ids') or []
+        assigned_requester_ids = request.data.get('assigned_requester_ids') or []
 
         # Si username non fourni mais email fourni, username devient l'email
         if not username and email:
@@ -52,7 +55,7 @@ class UserViewSet(viewsets.ModelViewSet):
         val_obj = None
         if validator_id:
             val_obj = User.objects.filter(id=validator_id).first()
-        Profile.objects.create(
+        profile = Profile.objects.create(
             user=user, 
             role=role, 
             company=company, 
@@ -60,6 +63,23 @@ class UserViewSet(viewsets.ModelViewSet):
             full_name=full_name,
             validator=val_obj
         )
+
+        if validator_ids:
+            profile.validators.set(validator_ids)
+            if not val_obj:
+                profile.validator_id = validator_ids[0]
+                profile.save()
+        elif val_obj:
+            profile.validators.add(val_obj)
+
+        if assigned_requester_ids:
+            for req_id in assigned_requester_ids:
+                r_prof = Profile.objects.filter(user_id=req_id).first()
+                if r_prof:
+                    r_prof.validators.add(user)
+                    if not r_prof.validator_id:
+                        r_prof.validator = user
+                        r_prof.save()
         
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -74,6 +94,8 @@ class UserViewSet(viewsets.ModelViewSet):
         company = request.data.get('company')
         department = request.data.get('department')
         validator_id = request.data.get('validator_id')
+        validator_ids = request.data.get('validator_ids')
+        assigned_requester_ids = request.data.get('assigned_requester_ids')
         password = request.data.get('password')
         is_active = request.data.get('is_active')
 
@@ -112,12 +134,43 @@ class UserViewSet(viewsets.ModelViewSet):
             profile.company = company
         if department is not None:
             profile.department = str(department).strip()
-        if 'validator_id' in request.data:
+
+        # Gestion des validateurs assignés à ce demandeur
+        if validator_ids is not None:
+            profile.validators.set(validator_ids)
+            if validator_ids:
+                profile.validator_id = validator_ids[0]
+            else:
+                profile.validator = None
+            profile.save()
+        elif 'validator_id' in request.data:
             if validator_id:
                 val_user = User.objects.filter(id=validator_id).first()
                 profile.validator = val_user
+                profile.validators.set([val_user] if val_user else [])
             else:
                 profile.validator = None
+                profile.validators.clear()
+            profile.save()
+
+        # Si ce compte est un validateur et qu'on configure les demandeurs qu'il supervise
+        if assigned_requester_ids is not None:
+            # 1. Retirer ce validateur des demandeurs qui ne sont plus dans la liste
+            for old_p in Profile.objects.filter(models.Q(validator=user) | models.Q(validators=user)).exclude(user_id__in=assigned_requester_ids):
+                old_p.validators.remove(user)
+                if old_p.validator_id == user.id:
+                    remaining = old_p.validators.first()
+                    old_p.validator = remaining
+                    old_p.save()
+            # 2. Ajouter ce validateur à tous les demandeurs de la liste
+            for req_id in assigned_requester_ids:
+                r_prof = Profile.objects.filter(user_id=req_id).first()
+                if r_prof:
+                    r_prof.validators.add(user)
+                    if not r_prof.validator_id:
+                        r_prof.validator = user
+                        r_prof.save()
+
         profile.save()
 
         serializer = self.get_serializer(user)
@@ -338,20 +391,27 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             # Récupérer la société de la demande
             req_company = instance.company or getattr(getattr(instance.requester, 'profile', None), 'company', 'SEFAMAR')
 
-            # 1. Vérifier si le demandeur a un validateur attitré
-            assigned_val = getattr(getattr(instance.requester, 'profile', None), 'validator', None)
-            if assigned_val:
-                Notification.objects.create(
-                    user=assigned_val,
-                    message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} vous étant assignée en attente de validation."
-                )
+            # 1. Vérifier si le demandeur a des validateurs attitrés
+            assigned_validators = []
+            if hasattr(instance.requester, 'profile') and instance.requester.profile:
+                prof = instance.requester.profile
+                assigned_validators = list(prof.validators.all())
+                if prof.validator and prof.validator not in assigned_validators:
+                    assigned_validators.append(prof.validator)
+
+            if assigned_validators:
+                for assigned_val in assigned_validators:
+                    Notification.objects.create(
+                        user=assigned_val,
+                        message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} vous étant assignée en attente de validation."
+                    )
                 # Notifier la DG si société SEFAMAR
                 if req_company == 'SEFAMAR':
                     dg = User.objects.filter(username='man@sefamar.ma').first()
-                    if dg and dg.id != assigned_val.id:
+                    if dg and dg not in assigned_validators:
                         Notification.objects.create(
                             user=dg,
-                            message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} (assignée à {assigned_val.username})."
+                            message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} (assignée à {', '.join(v.username for v in assigned_validators)})."
                         )
             else:
                 # 2. Pas de validateur spécifique : notifier UNIQUEMENT les validateurs de la MÊME entreprise !

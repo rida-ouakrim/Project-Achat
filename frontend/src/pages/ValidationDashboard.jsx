@@ -87,9 +87,10 @@ const ValidationDashboard = () => {
           return false;
         }
 
-        // 2. Si la demande a un validateur spécifique assigné au demandeur
-        if (req.assigned_validator_id) {
-          return req.assigned_validator_id === currentUserId || isSuperUser;
+        // 2. Si la demande a un ou plusieurs validateurs spécifiques assignés au demandeur
+        const assignedIds = req.assigned_validator_ids || (req.assigned_validator_id ? [req.assigned_validator_id] : []);
+        if (assignedIds.length > 0) {
+          return assignedIds.includes(currentUserId) || isSuperUser;
         }
         return true;
       });
