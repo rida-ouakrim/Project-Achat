@@ -11,6 +11,7 @@ import SourcingDashboard from './pages/SourcingDashboard';
 import QuoteComparisonDashboard from './pages/QuoteComparisonDashboard';
 import ValidationDashboard from './pages/ValidationDashboard';
 import AdminDashboard from './pages/AdminDashboard';
+import UsersManagement from './pages/UsersManagement';
 
 function App() {
   return (
@@ -21,6 +22,7 @@ function App() {
         <Route path="/" element={<Layout />}>
           <Route index element={<Navigate to="/login" replace />} />
           <Route path="admin-dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<UsersManagement />} />
           <Route path="requester" element={<RequesterDashboard />} />
           <Route path="purchasing" element={<PurchasingDashboard />} />
           <Route path="director" element={<DirectorDashboard />} />

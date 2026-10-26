@@ -17,7 +17,7 @@ const Layout = () => {
   // Restriction des routes par rôle (RBAC)
   const path = location.pathname.replace('/', '');
   
-  const allPaths = ['admin-dashboard', 'director', 'purchasing', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'];
+  const allPaths = ['admin-dashboard', 'users', 'director', 'purchasing', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'];
 
   const roleRouteMap = {
     admin: allPaths,

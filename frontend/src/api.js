@@ -78,6 +78,7 @@ export const fetchUsers = () => API.get('users/');
 export const loginUser = (username, password) => API.post('users/login/', { username, password });
 export const createUser = (data) => API.post('users/', data);
 export const updateUserRoleValidator = (id, data) => API.patch(`users/${id}/update_role_validator/`, data);
+export const updateUserFull = (id, data) => API.post(`users/${id}/update_full/`, data);
 export const deleteUser = (id) => API.delete(`users/${id}/`);
 export const resetUserPassword = (id, password) => API.post(`users/${id}/reset_password/`, { password });
 export const fetchRequests = () => API.get('requests/');

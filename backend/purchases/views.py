@@ -9,7 +9,7 @@ from .serializers import UserSerializer, PurchaseRequestSerializer, SupplierCata
 from .company_context import SEFAMAR_CONTEXT
 
 class UserViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    queryset = User.objects.all().order_by('-date_joined')
     serializer_class = UserSerializer
     permission_classes = [permissions.AllowAny]
 
@@ -17,30 +17,81 @@ class UserViewSet(viewsets.ModelViewSet):
         username = request.data.get('username')
         password = request.data.get('password')
         role = request.data.get('role', 'requester')
+        company = request.data.get('company', 'SEFAMAR')
         validator_id = request.data.get('validator_id')
 
         if not username or not password:
             return Response({'error': "Le nom d'utilisateur et le mot de passe sont requis."}, status=status.HTTP_400_BAD_REQUEST)
 
+        username = str(username).strip()
         if User.objects.filter(username__iexact=username).exists():
             return Response({'error': "Cet utilisateur existe déjà."}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = User.objects.create_user(username=username, password=password)
+        user = User.objects.create_user(username=username, password=password, email=username if '@' in username else '')
         val_obj = None
         if validator_id:
             val_obj = User.objects.filter(id=validator_id).first()
-        Profile.objects.create(user=user, role=role, validator=val_obj)
+        Profile.objects.create(user=user, role=role, company=company, validator=val_obj)
         
         serializer = self.get_serializer(user)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post', 'patch', 'put'])
+    def update_full(self, request, pk=None):
+        user = self.get_object()
+        username = request.data.get('username')
+        role = request.data.get('role')
+        company = request.data.get('company')
+        validator_id = request.data.get('validator_id')
+        password = request.data.get('password')
+        is_active = request.data.get('is_active')
+
+        # Modification du nom d'utilisateur si renseigné et différent
+        if username and username.strip() and username.strip().lower() != user.username.lower():
+            new_username = username.strip()
+            if User.objects.filter(username__iexact=new_username).exclude(id=user.id).exists():
+                return Response({'error': "Ce nom d'utilisateur est déjà utilisé par un autre compte."}, status=status.HTTP_400_BAD_REQUEST)
+            user.username = new_username
+            if '@' in new_username:
+                user.email = new_username
+
+        # Modification du mot de passe si renseigné
+        if password and str(password).strip():
+            user.set_password(str(password).strip())
+
+        # Modification du statut actif
+        if is_active is not None:
+            user.is_active = bool(is_active)
+
+        user.save()
+
+        # Mise à jour du profil (rôle, entreprise, validateur)
+        profile, _ = Profile.objects.get_or_create(user=user)
+        if role:
+            profile.role = role
+        if company:
+            profile.company = company
+        if 'validator_id' in request.data:
+            if validator_id:
+                val_user = User.objects.filter(id=validator_id).first()
+                profile.validator = val_user
+            else:
+                profile.validator = None
+        profile.save()
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
 
     @action(detail=True, methods=['post', 'patch'])
     def update_role_validator(self, request, pk=None):
         user = self.get_object()
         role = request.data.get('role')
+        company = request.data.get('company')
         profile, _ = Profile.objects.get_or_create(user=user)
         if role:
             profile.role = role
+        if company:
+            profile.company = company
         
         if 'validator_id' in request.data:
             validator_id = request.data.get('validator_id')
@@ -119,6 +170,13 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     queryset = PurchaseRequest.objects.all().order_by('-id')
     serializer_class = PurchaseRequestSerializer
     permission_classes = [permissions.AllowAny] 
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        company = self.request.query_params.get('company', None)
+        if company and company != 'Tous':
+            queryset = queryset.filter(company__iexact=company)
+        return queryset
 
     def create(self, request, *args, **kwargs):
         if hasattr(request.data, 'dict'):

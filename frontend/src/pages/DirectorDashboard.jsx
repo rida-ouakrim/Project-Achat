@@ -38,6 +38,7 @@ const DirectorDashboard = () => {
   const [filterDate, setFilterDate] = useState('');
   const [filterAssignment, setFilterAssignment] = useState('Tous');
   const [filterStatus, setFilterStatus] = useState('Tous');
+  const [filterCompany, setFilterCompany] = useState('Tous');
   const [filterProduct, setFilterProduct] = useState('');
 
   // States for request details modal
@@ -177,6 +178,10 @@ const DirectorDashboard = () => {
 
   // Filtered requests based on filter selections
   const filteredRequests = allRequestsSorted.filter(req => {
+    if (filterCompany !== 'Tous') {
+      const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+      if (comp !== filterCompany.toUpperCase()) return false;
+    }
     if (filterDate && req.date_created !== filterDate) return false;
     if (filterAssignment !== 'Tous' && req.assignment !== filterAssignment) return false;
     if (filterStatus !== 'Tous' && req.status !== filterStatus) return false;
@@ -407,6 +412,23 @@ const DirectorDashboard = () => {
 
               <div style={{ flex: 1, minWidth: '150px' }}>
                 <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>
+                  Filtrer par Entreprise
+                </label>
+                <select 
+                  className="form-input" 
+                  style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', width: '100%', backgroundColor: 'white' }}
+                  value={filterCompany}
+                  onChange={(e) => setFilterCompany(e.target.value)}
+                >
+                  <option value="Tous">Toutes les entreprises</option>
+                  <option value="SEFAMAR">SEFAMAR</option>
+                  <option value="SOMABUS">SOMABUS</option>
+                  <option value="CKD">CKD</option>
+                </select>
+              </div>
+
+              <div style={{ flex: 1, minWidth: '150px' }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: '0.25rem', display: 'block' }}>
                   Filtrer par Affectation
                 </label>
                 <select 
@@ -459,6 +481,7 @@ const DirectorDashboard = () => {
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8125rem', height: '36px' }}
                 onClick={() => {
                   setFilterDate('');
+                  setFilterCompany('Tous');
                   setFilterAssignment('Tous');
                   setFilterStatus('Tous');
                   setFilterProduct('');
@@ -473,6 +496,7 @@ const DirectorDashboard = () => {
                 <thead style={{ position: 'sticky', top: 0, backgroundColor: 'white', zIndex: 1 }}>
                   <tr>
                     <th>N° Commande</th>
+                    <th>Entreprise</th>
                     <th>Date</th>
                     <th>Demandeur</th>
                     <th>Produit</th>
@@ -500,6 +524,21 @@ const DirectorDashboard = () => {
                             <span>Dossier PDF</span>
                           </a>
                         )}
+                      </td>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {(() => {
+                          const comp = (order.company || order.requester_company || 'SEFAMAR').toUpperCase();
+                          const style = comp === 'SOMABUS' 
+                            ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
+                            : comp === 'CKD'
+                            ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
+                            : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
+                          return (
+                            <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
+                              {comp}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                         {order.date_created ? (() => {

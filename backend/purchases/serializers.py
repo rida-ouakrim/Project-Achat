@@ -8,15 +8,22 @@ class ProfileSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['role', 'validator', 'validator_id', 'validator_name']
+        fields = ['role', 'company', 'validator', 'validator_id', 'validator_name']
 
 class UserSerializer(serializers.ModelSerializer):
     profile = ProfileSerializer(read_only=True)
     date_joined = serializers.DateTimeField(read_only=True, format="%Y-%m-%d %H:%M")
+    requests_count = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'profile', 'date_joined', 'is_active']
+        fields = ['id', 'username', 'email', 'profile', 'date_joined', 'is_active', 'requests_count']
+
+    def get_requests_count(self, obj):
+        try:
+            return obj.requests.count()
+        except Exception:
+            return 0
 
 class SupplierCatalogSerializer(serializers.ModelSerializer):
     class Meta:
@@ -30,6 +37,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
+    requester_company = serializers.ReadOnlyField(source='requester.profile.company')
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
     assigned_validator_name = serializers.ReadOnlyField(source='requester.profile.validator.username')
@@ -38,7 +46,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
     class Meta:
         model = PurchaseRequest
         fields = [
-            'id', 'order_number', 'requester', 'requester_name', 
+            'id', 'order_number', 'requester', 'requester_name', 'company', 'requester_company',
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
             'is_validated', 'validated_by', 'validated_by_name',

@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { User, ShoppingCart, BarChart3, BookOpen, CheckSquare, Shield } from 'lucide-react';
+import { User, Users, ShoppingCart, BarChart3, BookOpen, CheckSquare, Shield } from 'lucide-react';
 
 const Sidebar = () => {
   const userRole = localStorage.getItem('userRole');
@@ -24,6 +24,10 @@ const Sidebar = () => {
             <NavLink to="/admin-dashboard" className={({ isActive }) => `sidebar-link ${isActive ? 'active-admin' : ''}`} style={({ isActive }) => isActive ? { backgroundColor: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', fontWeight: 600 } : { color: '#f87171' }}>
               <Shield size={18} />
               Superviseur Admin
+            </NavLink>
+            <NavLink to="/users" className={({ isActive }) => `sidebar-link ${isActive ? 'active-admin' : ''}`} style={({ isActive }) => isActive ? { backgroundColor: 'rgba(37, 99, 235, 0.15)', color: '#2563eb', fontWeight: 600 } : { color: '#2563eb' }}>
+              <Users size={18} />
+              Gestion Utilisateurs
             </NavLink>
             <div className="sidebar-section-divider">Espaces Métiers</div>
           </>
