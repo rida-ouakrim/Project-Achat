@@ -244,6 +244,13 @@ const Topbar = () => {
                 <Key size={14} />
               </button>
             </span>
+            {(localStorage.getItem('userCompany') || localStorage.getItem('userCity')) && (
+              <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 500 }}>
+                {localStorage.getItem('userCompany') === 'Succursale' && localStorage.getItem('userCity')
+                  ? `Succursale - ${localStorage.getItem('userCity')}`
+                  : localStorage.getItem('userCompany')}
+              </span>
+            )}
           </div>
         </div>
         <button 

@@ -10,13 +10,13 @@ const Sidebar = () => {
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <img 
-          src="/logo.png" 
-          alt="MAN Logo" 
-          style={{ height: '40px', objectFit: 'contain' }} 
+        <img
+          src="/logo.png"
+          alt="MAN Logo"
+          style={{ height: '40px', objectFit: 'contain' }}
         />
       </div>
-      
+
       <nav className="sidebar-nav">
         {isAdmin && (
           <>
@@ -34,7 +34,7 @@ const Sidebar = () => {
         )}
 
         {!isAdmin && <p className="sidebar-section-title">Rôles</p>}
-        
+
         {(isAdmin || userRole === 'requester' || userRole === 'director') && (
           <NavLink to="/requester" className={({ isActive }) => `sidebar-link ${isActive ? 'active-demandeur' : ''}`}>
             <User size={18} />

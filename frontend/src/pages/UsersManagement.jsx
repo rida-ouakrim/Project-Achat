@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  Users, UserPlus, Search, Filter, Shield, Key, Trash2, Edit3, 
+import {
+  Users, UserPlus, Search, Filter, Shield, Key, Trash2, Edit3,
   Building2, CheckCircle2, XCircle, FileText, ArrowUpDown, RefreshCw,
-  UserCheck, AlertTriangle, ChevronRight, Check, X, Briefcase
+  UserCheck, AlertTriangle, ChevronRight, Check, X, Briefcase, MapPin
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { 
-  fetchUsers, createUser, updateUserFull, deleteUser, resetUserPassword 
+import {
+  fetchUsers, createUser, updateUserFull, deleteUser, resetUserPassword
 } from '../api';
 
-const COMPANIES = ['SEFAMAR', 'SOMABUS', 'CKD'];
+const COMPANIES = ['SEFAMAR', 'SOMABUS', 'CKD', 'Succursale'];
+const CITIES = ['Agadir', 'Meknès', 'Laâyoune', 'Marrakech', 'Tanger', 'Nador', 'Dakhla'];
 
 const STANDARD_DEPARTMENTS = [
   { value: 'Magasinier', label: 'Magasinier (Pièces & Stock)', icon: '📦' },
@@ -37,6 +38,8 @@ const getCompanyBadgeStyle = (company) => {
       return { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' };
     case 'CKD':
       return { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' };
+    case 'SUCCURSALE':
+      return { backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' };
     case 'SEFAMAR':
     default:
       return { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
@@ -82,6 +85,7 @@ const UsersManagement = () => {
     password: '',
     role: 'requester',
     company: 'SEFAMAR',
+    city: '',
     departmentSelect: '',
     departmentCustom: '',
     validator_ids: [],
@@ -97,6 +101,7 @@ const UsersManagement = () => {
     email: '',
     role: 'requester',
     company: 'SEFAMAR',
+    city: '',
     departmentSelect: '',
     departmentCustom: '',
     validator_ids: [],
@@ -172,7 +177,7 @@ const UsersManagement = () => {
       const department = (u.profile?.department || '').trim();
       const validator = (u.profile?.validator_name || '').toLowerCase();
 
-      const matchesSearch = 
+      const matchesSearch =
         !search ||
         username.includes(search.toLowerCase()) ||
         email.includes(search.toLowerCase()) ||
@@ -183,7 +188,7 @@ const UsersManagement = () => {
 
       const matchesCompany = companyFilter === 'Tous' || company === companyFilter;
       const matchesRole = roleFilter === 'Tous' || role === roleFilter;
-      const matchesDept = departmentFilter === 'Tous' || 
+      const matchesDept = departmentFilter === 'Tous' ||
         (departmentFilter === 'Non renseigné' ? !department : department.toLowerCase() === departmentFilter.toLowerCase());
 
       return matchesSearch && matchesCompany && matchesRole && matchesDept;
@@ -196,9 +201,10 @@ const UsersManagement = () => {
     const sefamar = users.filter(u => (u.profile?.company || 'SEFAMAR').toUpperCase() === 'SEFAMAR').length;
     const somabus = users.filter(u => (u.profile?.company || '').toUpperCase() === 'SOMABUS').length;
     const ckd = users.filter(u => (u.profile?.company || '').toUpperCase() === 'CKD').length;
+    const succursales = users.filter(u => (u.profile?.company || '').toUpperCase() === 'SUCCURSALE').length;
     const withDept = users.filter(u => u.profile?.department && u.profile.department.trim()).length;
     const totalRequests = users.reduce((acc, u) => acc + (u.requests_count || 0), 0);
-    return { total, sefamar, somabus, ckd, withDept, totalRequests };
+    return { total, sefamar, somabus, ckd, succursales, withDept, totalRequests };
   }, [users]);
 
   // Création d'un utilisateur
@@ -206,6 +212,11 @@ const UsersManagement = () => {
     e.preventDefault();
     if (!createForm.name.trim() || !createForm.email.trim() || !createForm.password.trim()) {
       toast.error("Le nom complet, l'adresse email et le mot de passe sont obligatoires.");
+      return;
+    }
+
+    if (createForm.company === 'Succursale' && !createForm.city) {
+      toast.error("Veuillez sélectionner la ville de la succursale (ex: Agadir, Tanger, etc.).");
       return;
     }
 
@@ -227,6 +238,7 @@ const UsersManagement = () => {
         password: createForm.password.trim(),
         role: createForm.role,
         company: createForm.company,
+        city: createForm.company === 'Succursale' ? createForm.city : '',
         department: finalDept,
         validator_ids: createForm.role === 'requester' ? createForm.validator_ids : [],
         validator_id: createForm.role === 'requester' && createForm.validator_ids.length > 0 ? createForm.validator_ids[0] : null,
@@ -241,6 +253,7 @@ const UsersManagement = () => {
         password: '',
         role: 'requester',
         company: 'SEFAMAR',
+        city: '',
         departmentSelect: '',
         departmentCustom: '',
         validator_ids: [],
@@ -260,7 +273,7 @@ const UsersManagement = () => {
     const userDept = user.profile?.department || '';
     const isStandard = STANDARD_DEPARTMENTS.some(d => d.value.toLowerCase() === userDept.toLowerCase());
     const fullName = user.profile?.full_name || user.display_name || ((user.first_name || '') + ' ' + (user.last_name || '')).trim() || user.username;
-    
+
     const initialValIds = (user.profile?.validator_ids && user.profile.validator_ids.length > 0)
       ? user.profile.validator_ids
       : (user.profile?.validator_id ? [user.profile.validator_id] : []);
@@ -273,6 +286,7 @@ const UsersManagement = () => {
       email: user.email || user.username,
       role: user.profile?.role || 'requester',
       company: user.profile?.company || 'SEFAMAR',
+      city: user.profile?.city || '',
       departmentSelect: isStandard ? userDept : (userDept ? 'custom' : ''),
       departmentCustom: isStandard ? '' : userDept,
       validator_ids: initialValIds,
@@ -292,6 +306,11 @@ const UsersManagement = () => {
       return;
     }
 
+    if (editForm.company === 'Succursale' && !editForm.city) {
+      toast.error("Veuillez sélectionner la ville de la succursale (ex: Agadir, Tanger, etc.).");
+      return;
+    }
+
     let finalDept = '';
     if (editForm.departmentSelect === 'custom') {
       finalDept = editForm.departmentCustom.trim();
@@ -308,6 +327,7 @@ const UsersManagement = () => {
         username: editForm.email.trim(),
         role: editForm.role,
         company: editForm.company,
+        city: editForm.company === 'Succursale' ? editForm.city : '',
         department: finalDept,
         validator_ids: editForm.role === 'requester' ? editForm.validator_ids : [],
         validator_id: editForm.role === 'requester' && editForm.validator_ids.length > 0 ? editForm.validator_ids[0] : null,
@@ -369,7 +389,7 @@ const UsersManagement = () => {
 
   return (
     <div style={{ padding: '1.5rem', maxWidth: '1440px', margin: '0 auto' }}>
-      
+
       {/* En-tête de la page */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
@@ -385,8 +405,8 @@ const UsersManagement = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          <button 
-            onClick={loadData} 
+          <button
+            onClick={loadData}
             className="btn btn-outline"
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.6rem 1rem' }}
             title="Rafraîchir les données"
@@ -394,7 +414,7 @@ const UsersManagement = () => {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             Actualiser
           </button>
-          <button 
+          <button
             onClick={() => setIsCreateOpen(true)}
             className="btn btn-primary"
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.6rem 1.25rem', fontWeight: 600, backgroundColor: '#2563eb' }}
@@ -445,6 +465,15 @@ const UsersManagement = () => {
 
         <div style={{ backgroundColor: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', color: '#0f766e', fontWeight: 600 }}>SUCCURSALES</span>
+            <MapPin size={20} style={{ color: '#0d9488' }} />
+          </div>
+          <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#0f766e' }}>{stats.succursales}</div>
+          <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem' }}>Branches régionales</div>
+        </div>
+
+        <div style={{ backgroundColor: '#ffffff', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>AVEC SERVICE DÉFINI</span>
             <Briefcase size={20} style={{ color: '#059669' }} />
           </div>
@@ -458,7 +487,7 @@ const UsersManagement = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: '1', minWidth: '280px' }}>
           <div style={{ position: 'relative', width: '100%', maxWidth: '360px' }}>
             <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-            <input 
+            <input
               type="text"
               placeholder="Rechercher par nom, service, validateur..."
               value={search}
@@ -468,7 +497,7 @@ const UsersManagement = () => {
             />
           </div>
           {search && (
-            <button 
+            <button
               onClick={() => setSearch('')}
               style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '4px' }}
               title="Effacer la recherche"
@@ -482,8 +511,8 @@ const UsersManagement = () => {
           {/* Filtre Entreprise */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société:</span>
-            <select 
-              value={companyFilter} 
+            <select
+              value={companyFilter}
               onChange={(e) => setCompanyFilter(e.target.value)}
               className="form-input"
               style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
@@ -498,8 +527,8 @@ const UsersManagement = () => {
           {/* Filtre Département / Service */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Service:</span>
-            <select 
-              value={departmentFilter} 
+            <select
+              value={departmentFilter}
               onChange={(e) => setDepartmentFilter(e.target.value)}
               className="form-input"
               style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
@@ -515,8 +544,8 @@ const UsersManagement = () => {
           {/* Filtre Rôle */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
             <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Rôle:</span>
-            <select 
-              value={roleFilter} 
+            <select
+              value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
               className="form-input"
               style={{ padding: '0.4rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
@@ -561,6 +590,7 @@ const UsersManagement = () => {
               <tbody>
                 {filteredUsers.map((u) => {
                   const company = (u.profile?.company || 'SEFAMAR').toUpperCase();
+                  const city = (u.profile?.city || '').trim();
                   const department = (u.profile?.department || '').trim();
                   const role = u.profile?.role || 'requester';
                   const validatorName = u.profile?.validator_name;
@@ -571,20 +601,20 @@ const UsersManagement = () => {
 
                   return (
                     <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
-                      
+
                       {/* Utilisateur (Nom + Email) */}
                       <td style={{ padding: '0.9rem 1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ 
-                            width: '38px', 
-                            height: '38px', 
-                            borderRadius: '50%', 
-                            backgroundColor: '#eff6ff', 
-                            color: '#2563eb', 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            justifyContent: 'center', 
-                            fontWeight: 700, 
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            backgroundColor: '#eff6ff',
+                            color: '#2563eb',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
                             fontSize: '0.9rem',
                             border: '1px solid #bfdbfe',
                             flexShrink: 0
@@ -611,7 +641,7 @@ const UsersManagement = () => {
 
                       {/* Entreprise */}
                       <td style={{ padding: '0.9rem 1rem' }}>
-                        <span style={{ 
+                        <span style={{
                           ...getCompanyBadgeStyle(company),
                           display: 'inline-flex',
                           alignItems: 'center',
@@ -620,17 +650,18 @@ const UsersManagement = () => {
                           borderRadius: '6px',
                           fontSize: '0.8rem',
                           fontWeight: 700,
-                          letterSpacing: '0.02em'
+                          letterSpacing: '0.02em',
+                          whiteSpace: 'nowrap'
                         }}>
-                          <Building2 size={13} />
-                          {company}
+                          {company === 'SUCCURSALE' ? <MapPin size={13} /> : <Building2 size={13} />}
+                          {company === 'SUCCURSALE' && city ? `Succursale - ${city}` : (u.profile?.company || company)}
                         </span>
                       </td>
 
                       {/* Service / Département */}
                       <td style={{ padding: '0.9rem 1rem' }}>
                         {department ? (
-                          <span style={{ 
+                          <span style={{
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '0.35rem',
@@ -654,7 +685,7 @@ const UsersManagement = () => {
 
                       {/* Rôle */}
                       <td style={{ padding: '0.9rem 1rem' }}>
-                        <span style={{ 
+                        <span style={{
                           ...getRoleBadgeStyle(role),
                           display: 'inline-block',
                           padding: '0.25rem 0.65rem',
@@ -676,7 +707,7 @@ const UsersManagement = () => {
                             </div>
                           ) : (
                             <span style={{ fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
-                              Tous demandeurs {company}
+                              Tous demandeurs {company === 'SUCCURSALE' && city ? `Succursale ${city}` : (u.profile?.company || company)}
                             </span>
                           )
                         ) : role === 'requester' ? (
@@ -687,7 +718,7 @@ const UsersManagement = () => {
                             </div>
                           ) : (
                             <span style={{ fontSize: '0.8rem', color: '#94a3b8', fontStyle: 'italic' }}>
-                              Validateur {company}
+                              Validateur {company === 'SUCCURSALE' && city ? `Succursale ${city}` : (u.profile?.company || company)}
                             </span>
                           )
                         ) : (
@@ -697,7 +728,7 @@ const UsersManagement = () => {
 
                       {/* Nombre de demandes */}
                       <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
-                        <span style={{ 
+                        <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.25rem',
@@ -722,7 +753,7 @@ const UsersManagement = () => {
                       {/* Actions */}
                       <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
                         <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
-                          <button 
+                          <button
                             onClick={() => handleOpenEdit(u)}
                             className="btn btn-outline"
                             style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
@@ -732,7 +763,7 @@ const UsersManagement = () => {
                             Modifier
                           </button>
 
-                          <button 
+                          <button
                             onClick={() => {
                               setPassUser(u);
                               setQuickPassword('');
@@ -746,7 +777,7 @@ const UsersManagement = () => {
                           </button>
 
                           {!isProtected && (
-                            <button 
+                            <button
                               onClick={() => setUserToDelete(u)}
                               className="btn btn-outline"
                               style={{ padding: '0.3rem 0.5rem', color: '#dc2626', borderColor: '#fecaca' }}
@@ -784,12 +815,12 @@ const UsersManagement = () => {
 
             <form onSubmit={handleCreateSubmit} style={{ marginTop: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                
+
                 {/* Nom & Prénom */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Nom Complet (Nom & Prénom) *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Ex: Mohamed Alami"
                     value={createForm.name}
                     onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
@@ -804,8 +835,8 @@ const UsersManagement = () => {
                 {/* Adresse Email */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Adresse Email (Identifiant de connexion) *</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     placeholder="Ex: m.alami@sefamar.ma"
                     value={createForm.email}
                     onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
@@ -820,8 +851,8 @@ const UsersManagement = () => {
                 {/* Mot de passe */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Mot de passe initial *</label>
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     placeholder="Saisissez un mot de passe sécurisé"
                     value={createForm.password}
                     onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
@@ -830,20 +861,23 @@ const UsersManagement = () => {
                   />
                 </div>
 
-                {/* Choix de l'Entreprise (SEFAMAR / SOMABUS / CKD) */}
+                {/* Choix de l'Entreprise (SEFAMAR / SOMABUS / CKD / Succursale) */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <Building2 size={16} />
                     Entreprise / Société *
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.45rem', marginTop: '0.25rem' }}>
                     {COMPANIES.map(comp => (
                       <button
                         type="button"
                         key={comp}
-                        onClick={() => setCreateForm({ ...createForm, company: comp })}
+                        onClick={() => {
+                          const newCity = comp === 'Succursale' ? (createForm.city || CITIES[0]) : '';
+                          setCreateForm({ ...createForm, company: comp, city: newCity });
+                        }}
                         style={{
-                          padding: '0.6rem 0.5rem',
+                          padding: '0.6rem 0.4rem',
                           borderRadius: '8px',
                           border: createForm.company === comp ? '2px solid #2563eb' : '1px solid #cbd5e1',
                           backgroundColor: createForm.company === comp ? '#eff6ff' : '#ffffff',
@@ -853,8 +887,8 @@ const UsersManagement = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.3rem',
-                          fontSize: '0.85rem'
+                          gap: '0.25rem',
+                          fontSize: '0.82rem'
                         }}
                       >
                         {createForm.company === comp && <Check size={14} />}
@@ -862,6 +896,45 @@ const UsersManagement = () => {
                       </button>
                     ))}
                   </div>
+
+                  {/* Choix de la Ville si Succursale */}
+                  {createForm.company === 'Succursale' && (
+                    <div style={{ marginTop: '0.65rem', padding: '0.75rem', backgroundColor: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: '8px' }}>
+                      <label className="form-label" style={{ fontWeight: 600, color: '#0f766e', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                        <MapPin size={15} />
+                        Ville de la Succursale *
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '0.35rem' }}>
+                        {CITIES.map(city => {
+                          const isSelected = createForm.city === city;
+                          return (
+                            <button
+                              type="button"
+                              key={city}
+                              onClick={() => setCreateForm({ ...createForm, city })}
+                              style={{
+                                padding: '0.4rem 0.5rem',
+                                borderRadius: '6px',
+                                border: isSelected ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                                backgroundColor: isSelected ? '#ccfbf1' : '#ffffff',
+                                color: isSelected ? '#0f766e' : '#334155',
+                                fontWeight: isSelected ? 700 : 500,
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.2rem'
+                              }}
+                            >
+                              {isSelected && <Check size={12} />}
+                              {city}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Service / Département (Optionnel avec choix prédéfini ou saisie manuelle) */}
@@ -873,7 +946,7 @@ const UsersManagement = () => {
                     </span>
                     <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>Optionnel</span>
                   </label>
-                  <select 
+                  <select
                     value={createForm.departmentSelect}
                     onChange={(e) => setCreateForm({ ...createForm, departmentSelect: e.target.value })}
                     className="form-input"
@@ -888,7 +961,7 @@ const UsersManagement = () => {
                   {/* Champ de saisie manuelle si "custom" */}
                   {createForm.departmentSelect === 'custom' && (
                     <div style={{ marginTop: '0.5rem' }}>
-                      <input 
+                      <input
                         type="text"
                         placeholder="Saisissez le nom du service (ex: Peinture, Qualité, etc.)..."
                         value={createForm.departmentCustom}
@@ -903,7 +976,7 @@ const UsersManagement = () => {
                 {/* Rôle */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Rôle Métier *</label>
-                  <select 
+                  <select
                     value={createForm.role}
                     onChange={(e) => setCreateForm({ ...createForm, role: e.target.value })}
                     className="form-input"
@@ -932,7 +1005,7 @@ const UsersManagement = () => {
                       Par défaut, sans sélection, ce validateur reçoit toutes les demandes de <strong>{createForm.company}</strong>. Cochez ci-dessous les demandeurs spécifiques :
                     </p>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         className="btn btn-outline"
@@ -946,6 +1019,21 @@ const UsersManagement = () => {
                       >
                         Tous ceux de {createForm.company}
                       </button>
+                      {createForm.company === 'Succursale' && createForm.city && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: '#0f766e', borderColor: '#99f6e4', backgroundColor: '#f0fdfa' }}
+                          onClick={() => {
+                            const ids = potentialRequesters
+                              .filter(r => (r.profile?.company || '').toUpperCase() === 'SUCCURSALE' && (r.profile?.city || '').toLowerCase() === createForm.city.toLowerCase())
+                              .map(r => r.id);
+                            setCreateForm({ ...createForm, assigned_requester_ids: ids });
+                          }}
+                        >
+                          Demandeurs de {createForm.city}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn btn-outline"
@@ -972,24 +1060,25 @@ const UsersManagement = () => {
                         const reqName = req.profile?.full_name || req.display_name || req.username;
                         const reqEmail = req.email || req.username;
                         const reqComp = req.profile?.company || 'SEFAMAR';
+                        const reqCity = req.profile?.city || '';
                         const reqDept = req.profile?.department;
 
                         return (
-                          <label 
-                            key={req.id} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '0.6rem', 
-                              padding: '0.35rem 0.5rem', 
-                              backgroundColor: isChecked ? '#eff6ff' : '#ffffff', 
-                              border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0', 
-                              borderRadius: '6px', 
+                          <label
+                            key={req.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              padding: '0.35rem 0.5rem',
+                              backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                              border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                              borderRadius: '6px',
                               cursor: 'pointer',
                               fontSize: '0.82rem'
                             }}
                           >
-                            <input 
+                            <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
@@ -1012,8 +1101,12 @@ const UsersManagement = () => {
                                     {reqDept}
                                   </span>
                                 )}
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: reqComp === 'SOMABUS' ? '#b45309' : reqComp === 'CKD' ? '#15803d' : '#0369a1' }}>
-                                  {reqComp}
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: reqComp === 'SOMABUS' ? '#b45309' : reqComp === 'CKD' ? '#15803d' : reqComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                                }}>
+                                  {reqComp === 'SUCCURSALE' && reqCity ? `Succursale - ${reqCity}` : reqComp}
                                 </span>
                               </div>
                             </div>
@@ -1041,7 +1134,7 @@ const UsersManagement = () => {
                     </div>
 
                     <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
-                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de <strong>{createForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
+                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de <strong>{createForm.company === 'Succursale' && createForm.city ? `la Succursale ${createForm.city}` : createForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
                     </p>
 
                     <div style={{
@@ -1060,23 +1153,24 @@ const UsersManagement = () => {
                         const valName = val.profile?.full_name || val.display_name || val.username;
                         const valEmail = val.email || val.username;
                         const valComp = val.profile?.company || 'SEFAMAR';
+                        const valCity = val.profile?.city || '';
 
                         return (
-                          <label 
-                            key={val.id} 
-                            style={{ 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              gap: '0.6rem', 
-                              padding: '0.35rem 0.5rem', 
-                              backgroundColor: isChecked ? '#eff6ff' : '#ffffff', 
-                              border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0', 
-                              borderRadius: '6px', 
+                          <label
+                            key={val.id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '0.6rem',
+                              padding: '0.35rem 0.5rem',
+                              backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                              border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                              borderRadius: '6px',
                               cursor: 'pointer',
                               fontSize: '0.82rem'
                             }}
                           >
-                            <input 
+                            <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={(e) => {
@@ -1093,8 +1187,12 @@ const UsersManagement = () => {
                                 <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
                                 <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
                               </div>
-                              <span style={{ fontSize: '0.7rem', fontWeight: 600, color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : '#0369a1' }}>
-                                {valComp}
+                              <span style={{
+                                fontSize: '0.7rem',
+                                fontWeight: 600,
+                                color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                              }}>
+                                {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
                               </span>
                             </div>
                           </label>
@@ -1107,15 +1205,15 @@ const UsersManagement = () => {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsCreateOpen(false)}
                   className="btn btn-outline"
                 >
                   Annuler
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={creating}
                   className="btn btn-primary"
                   style={{ backgroundColor: '#2563eb' }}
@@ -1149,12 +1247,12 @@ const UsersManagement = () => {
 
             <form onSubmit={handleEditSubmit} style={{ marginTop: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                
+
                 {/* Nom & Prénom */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Nom Complet (Nom & Prénom) *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="Ex: Mohamed Alami"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
@@ -1166,8 +1264,8 @@ const UsersManagement = () => {
                 {/* Adresse Email */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Adresse Email (Identifiant de connexion) *</label>
-                  <input 
-                    type="email" 
+                  <input
+                    type="email"
                     placeholder="Ex: m.alami@sefamar.ma"
                     value={editForm.email}
                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
@@ -1182,14 +1280,17 @@ const UsersManagement = () => {
                     <Building2 size={16} />
                     Entreprise / Société *
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.45rem', marginTop: '0.25rem' }}>
                     {COMPANIES.map(comp => (
                       <button
                         type="button"
                         key={comp}
-                        onClick={() => setEditForm({ ...editForm, company: comp })}
+                        onClick={() => {
+                          const newCity = comp === 'Succursale' ? (editForm.city || CITIES[0]) : '';
+                          setEditForm({ ...editForm, company: comp, city: newCity });
+                        }}
                         style={{
-                          padding: '0.6rem 0.5rem',
+                          padding: '0.6rem 0.4rem',
                           borderRadius: '8px',
                           border: editForm.company === comp ? '2px solid #2563eb' : '1px solid #cbd5e1',
                           backgroundColor: editForm.company === comp ? '#eff6ff' : '#ffffff',
@@ -1199,8 +1300,8 @@ const UsersManagement = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
-                          gap: '0.3rem',
-                          fontSize: '0.85rem'
+                          gap: '0.25rem',
+                          fontSize: '0.82rem'
                         }}
                       >
                         {editForm.company === comp && <Check size={14} />}
@@ -1208,6 +1309,45 @@ const UsersManagement = () => {
                       </button>
                     ))}
                   </div>
+
+                  {/* Choix de la Ville si Succursale */}
+                  {editForm.company === 'Succursale' && (
+                    <div style={{ marginTop: '0.65rem', padding: '0.75rem', backgroundColor: '#f0fdfa', border: '1px solid #99f6e4', borderRadius: '8px' }}>
+                      <label className="form-label" style={{ fontWeight: 600, color: '#0f766e', display: 'flex', alignItems: 'center', gap: '0.35rem', marginBottom: '0.4rem', fontSize: '0.82rem' }}>
+                        <MapPin size={15} />
+                        Ville de la Succursale *
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))', gap: '0.35rem' }}>
+                        {CITIES.map(city => {
+                          const isSelected = editForm.city === city;
+                          return (
+                            <button
+                              type="button"
+                              key={city}
+                              onClick={() => setEditForm({ ...editForm, city })}
+                              style={{
+                                padding: '0.4rem 0.5rem',
+                                borderRadius: '6px',
+                                border: isSelected ? '2px solid #0d9488' : '1px solid #cbd5e1',
+                                backgroundColor: isSelected ? '#ccfbf1' : '#ffffff',
+                                color: isSelected ? '#0f766e' : '#334155',
+                                fontWeight: isSelected ? 700 : 500,
+                                cursor: 'pointer',
+                                fontSize: '0.8rem',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: '0.2rem'
+                              }}
+                            >
+                              {isSelected && <Check size={12} />}
+                              {city}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Service / Département */}
@@ -1219,7 +1359,7 @@ const UsersManagement = () => {
                     </span>
                     <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 400 }}>Optionnel</span>
                   </label>
-                  <select 
+                  <select
                     value={editForm.departmentSelect}
                     onChange={(e) => setEditForm({ ...editForm, departmentSelect: e.target.value })}
                     className="form-input"
@@ -1234,7 +1374,7 @@ const UsersManagement = () => {
                   {/* Saisie manuelle */}
                   {editForm.departmentSelect === 'custom' && (
                     <div style={{ marginTop: '0.5rem' }}>
-                      <input 
+                      <input
                         type="text"
                         placeholder="Saisissez le nom du service manuellement..."
                         value={editForm.departmentCustom}
@@ -1249,7 +1389,7 @@ const UsersManagement = () => {
                 {/* Rôle */}
                 <div>
                   <label className="form-label" style={{ fontWeight: 600 }}>Rôle Métier *</label>
-                  <select 
+                  <select
                     value={editForm.role}
                     onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
                     className="form-input"
@@ -1278,7 +1418,7 @@ const UsersManagement = () => {
                       Par défaut, sans sélection, ce validateur reçoit toutes les demandes de la société <strong>{editForm.company}</strong>. Cochez ci-dessous les demandeurs spécifiques à lui affecter (1 ou plusieurs) :
                     </p>
 
-                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem' }}>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
                       <button
                         type="button"
                         className="btn btn-outline"
@@ -1292,6 +1432,21 @@ const UsersManagement = () => {
                       >
                         Tous ceux de {editForm.company}
                       </button>
+                      {editForm.company === 'Succursale' && editForm.city && (
+                        <button
+                          type="button"
+                          className="btn btn-outline"
+                          style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', color: '#0f766e', borderColor: '#99f6e4', backgroundColor: '#f0fdfa' }}
+                          onClick={() => {
+                            const ids = potentialRequesters
+                              .filter(r => (r.profile?.company || '').toUpperCase() === 'SUCCURSALE' && (r.profile?.city || '').toLowerCase() === editForm.city.toLowerCase() && r.id !== editForm.id)
+                              .map(r => r.id);
+                            setEditForm({ ...editForm, assigned_requester_ids: ids });
+                          }}
+                        >
+                          Demandeurs de {editForm.city}
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="btn btn-outline"
@@ -1320,24 +1475,25 @@ const UsersManagement = () => {
                           const reqName = req.profile?.full_name || req.display_name || req.username;
                           const reqEmail = req.email || req.username;
                           const reqComp = req.profile?.company || 'SEFAMAR';
+                          const reqCity = req.profile?.city || '';
                           const reqDept = req.profile?.department;
 
                           return (
-                            <label 
-                              key={req.id} 
-                              style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.6rem', 
-                                padding: '0.35rem 0.5rem', 
-                                backgroundColor: isChecked ? '#eff6ff' : '#ffffff', 
-                                border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0', 
-                                borderRadius: '6px', 
+                            <label
+                              key={req.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                padding: '0.35rem 0.5rem',
+                                backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                                border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
                                 fontSize: '0.82rem'
                               }}
                             >
-                              <input 
+                              <input
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={(e) => {
@@ -1360,8 +1516,12 @@ const UsersManagement = () => {
                                       {reqDept}
                                     </span>
                                   )}
-                                  <span style={{ fontSize: '0.7rem', fontWeight: 600, color: reqComp === 'SOMABUS' ? '#b45309' : reqComp === 'CKD' ? '#15803d' : '#0369a1' }}>
-                                    {reqComp}
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    color: reqComp === 'SOMABUS' ? '#b45309' : reqComp === 'CKD' ? '#15803d' : reqComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                                  }}>
+                                    {reqComp === 'SUCCURSALE' && reqCity ? `Succursale - ${reqCity}` : reqComp}
                                   </span>
                                 </div>
                               </div>
@@ -1389,7 +1549,7 @@ const UsersManagement = () => {
                     </div>
 
                     <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
-                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de la société <strong>{editForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
+                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de la société <strong>{editForm.company === 'Succursale' && editForm.city ? `la Succursale ${editForm.city}` : editForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
                     </p>
 
                     <div style={{
@@ -1410,23 +1570,24 @@ const UsersManagement = () => {
                           const valName = val.profile?.full_name || val.display_name || val.username;
                           const valEmail = val.email || val.username;
                           const valComp = val.profile?.company || 'SEFAMAR';
+                          const valCity = val.profile?.city || '';
 
                           return (
-                            <label 
-                              key={val.id} 
-                              style={{ 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                gap: '0.6rem', 
-                                padding: '0.35rem 0.5rem', 
-                                backgroundColor: isChecked ? '#eff6ff' : '#ffffff', 
-                                border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0', 
-                                borderRadius: '6px', 
+                            <label
+                              key={val.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '0.6rem',
+                                padding: '0.35rem 0.5rem',
+                                backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                                border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                                borderRadius: '6px',
                                 cursor: 'pointer',
                                 fontSize: '0.82rem'
                               }}
                             >
-                              <input 
+                              <input
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={(e) => {
@@ -1443,8 +1604,12 @@ const UsersManagement = () => {
                                   <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
                                   <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
                                 </div>
-                                <span style={{ fontSize: '0.7rem', fontWeight: 600, color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : '#0369a1' }}>
-                                  {valComp}
+                                <span style={{
+                                  fontSize: '0.7rem',
+                                  fontWeight: 600,
+                                  color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                                }}>
+                                  {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
                                 </span>
                               </div>
                             </label>
@@ -1460,8 +1625,8 @@ const UsersManagement = () => {
                     <Key size={16} />
                     Nouveau Mot de Passe (Laisser vide si inchangé)
                   </label>
-                  <input 
-                    type="password" 
+                  <input
+                    type="password"
                     placeholder="Optionnel : nouveau mot de passe"
                     value={editForm.password}
                     onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
@@ -1471,8 +1636,8 @@ const UsersManagement = () => {
 
                 {/* Statut Compte */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  <input 
-                    type="checkbox" 
+                  <input
+                    type="checkbox"
                     id="isActiveCheckbox"
                     checked={editForm.is_active}
                     onChange={(e) => setEditForm({ ...editForm, is_active: e.target.checked })}
@@ -1486,15 +1651,15 @@ const UsersManagement = () => {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsEditOpen(false)}
                   className="btn btn-outline"
                 >
                   Annuler
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={updating}
                   className="btn btn-primary"
                   style={{ backgroundColor: '#2563eb' }}
@@ -1529,8 +1694,8 @@ const UsersManagement = () => {
             <form onSubmit={handleQuickPassSubmit} style={{ marginTop: '1rem' }}>
               <div>
                 <label className="form-label" style={{ fontWeight: 600 }}>Nouveau Mot de Passe *</label>
-                <input 
-                  type="password" 
+                <input
+                  type="password"
                   placeholder="Saisissez le nouveau mot de passe"
                   value={quickPassword}
                   onChange={(e) => setQuickPassword(e.target.value)}
@@ -1540,15 +1705,15 @@ const UsersManagement = () => {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsPassModalOpen(false)}
                   className="btn btn-outline"
                 >
                   Annuler
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   disabled={savingPass}
                   className="btn btn-primary"
                   style={{ backgroundColor: '#d97706' }}
@@ -1583,15 +1748,15 @@ const UsersManagement = () => {
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={() => setUserToDelete(null)}
                 className="btn btn-outline"
               >
                 Annuler
               </button>
-              <button 
-                type="button" 
+              <button
+                type="button"
                 onClick={handleDeleteConfirm}
                 disabled={deleting}
                 className="btn btn-primary"

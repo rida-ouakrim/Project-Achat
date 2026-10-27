@@ -21,6 +21,7 @@ class UserViewSet(viewsets.ModelViewSet):
         password = request.data.get('password')
         role = request.data.get('role', 'requester')
         company = request.data.get('company', 'SEFAMAR')
+        city = str(request.data.get('city') or '').strip()
         department = request.data.get('department', '').strip()
         validator_id = request.data.get('validator_id')
         validator_ids = request.data.get('validator_ids') or []
@@ -59,6 +60,7 @@ class UserViewSet(viewsets.ModelViewSet):
             user=user, 
             role=role, 
             company=company, 
+            city=city,
             department=department, 
             full_name=full_name,
             validator=val_obj
@@ -92,6 +94,7 @@ class UserViewSet(viewsets.ModelViewSet):
         username = request.data.get('username')
         role = request.data.get('role')
         company = request.data.get('company')
+        city = request.data.get('city')
         department = request.data.get('department')
         validator_id = request.data.get('validator_id')
         validator_ids = request.data.get('validator_ids')
@@ -124,7 +127,7 @@ class UserViewSet(viewsets.ModelViewSet):
 
         user.save()
 
-        # Mise à jour du profil (nom complet, rôle, entreprise, département/service, validateur)
+        # Mise à jour du profil (nom complet, rôle, entreprise, ville, département/service, validateur)
         profile, _ = Profile.objects.get_or_create(user=user)
         if full_name is not None:
             profile.full_name = str(full_name).strip()
@@ -132,6 +135,8 @@ class UserViewSet(viewsets.ModelViewSet):
             profile.role = role
         if company:
             profile.company = company
+        if city is not None:
+            profile.city = str(city).strip()
         if department is not None:
             profile.department = str(department).strip()
 
@@ -181,12 +186,15 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         role = request.data.get('role')
         company = request.data.get('company')
+        city = request.data.get('city')
         department = request.data.get('department')
         profile, _ = Profile.objects.get_or_create(user=user)
         if role:
             profile.role = role
         if company:
             profile.company = company
+        if city is not None:
+            profile.city = str(city).strip()
         if department is not None:
             profile.department = department.strip()
         
@@ -351,9 +359,11 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         requester = serializer.validated_data.get('requester')
         req_company = getattr(getattr(requester, 'profile', None), 'company', 'SEFAMAR')
+        req_city = getattr(getattr(requester, 'profile', None), 'city', '')
         req_dept = getattr(getattr(requester, 'profile', None), 'department', '')
         instance = serializer.save(
             company=req_company if req_company else 'SEFAMAR',
+            city=serializer.validated_data.get('city') or req_city,
             department=serializer.validated_data.get('department') or req_dept
         )
         
@@ -394,8 +404,10 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     message=f"La demande {instance.order_number} de {validator_name} a été validée automatiquement et est prête pour achat."
                 )
         else:
-            # Récupérer la société de la demande
+            # Récupérer la société et la ville de la demande
             req_company = instance.company or getattr(getattr(instance.requester, 'profile', None), 'company', 'SEFAMAR')
+            req_city = instance.city or getattr(getattr(instance.requester, 'profile', None), 'city', '')
+            entity_label = f"{req_company} ({req_city})" if (req_company == 'Succursale' and req_city) else req_company
 
             # 1. Vérifier si le demandeur a des validateurs attitrés
             assigned_validators = []
@@ -409,7 +421,7 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                 for assigned_val in assigned_validators:
                     Notification.objects.create(
                         user=assigned_val,
-                        message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} vous étant assignée en attente de validation."
+                        message=f"Nouvelle demande {instance.order_number} ({entity_label}) de {instance.requester.username} vous étant assignée en attente de validation."
                     )
                 # Notifier la DG si société SEFAMAR
                 if req_company == 'SEFAMAR':
@@ -417,26 +429,38 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     if dg and dg not in assigned_validators:
                         Notification.objects.create(
                             user=dg,
-                            message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} (assignée à {', '.join(v.username for v in assigned_validators)})."
+                            message=f"Nouvelle demande {instance.order_number} ({entity_label}) de {instance.requester.username} (assignée à {', '.join(v.username for v in assigned_validators)})."
                         )
             else:
-                # 2. Pas de validateur spécifique : notifier UNIQUEMENT les validateurs de la MÊME entreprise !
-                validators = User.objects.filter(
-                    profile__role__in=['validator', 'director'],
-                    profile__company__iexact=req_company
-                )
-                
-                # Si aucun validateur avec rôle explicite trouvé pour cette entreprise
-                if not validators.exists():
-                    if req_company == 'SEFAMAR':
-                        validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
-                    else:
-                        validators = User.objects.filter(profile__company__iexact=req_company)
+                # 2. Pas de validateur spécifique : notifier les validateurs de la MÊME entreprise / même ville !
+                if req_company == 'Succursale' and req_city:
+                    validators = User.objects.filter(
+                        profile__role__in=['validator', 'director'],
+                        profile__company__iexact='Succursale',
+                        profile__city__iexact=req_city
+                    )
+                    if not validators.exists():
+                        validators = User.objects.filter(
+                            profile__company__iexact='Succursale',
+                            profile__city__iexact=req_city
+                        )
+                else:
+                    validators = User.objects.filter(
+                        profile__role__in=['validator', 'director'],
+                        profile__company__iexact=req_company
+                    )
+                    
+                    # Si aucun validateur avec rôle explicite trouvé pour cette entreprise
+                    if not validators.exists():
+                        if req_company == 'SEFAMAR':
+                            validators = User.objects.filter(username__in=['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma'])
+                        else:
+                            validators = User.objects.filter(profile__company__iexact=req_company)
 
                 for val in validators:
                     Notification.objects.create(
                         user=val,
-                        message=f"Nouvelle demande {instance.order_number} ({req_company}) de {instance.requester.username} en attente de validation."
+                        message=f"Nouvelle demande {instance.order_number} ({entity_label}) de {instance.requester.username} en attente de validation."
                     )
 
     def update(self, request, *args, **kwargs):

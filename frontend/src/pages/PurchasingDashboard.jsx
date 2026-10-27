@@ -55,10 +55,12 @@ const PurchasingDashboard = () => {
     const comp = (req.company || req.requester_company || '').toUpperCase().trim();
     if (comp.includes('SOMA')) return 'SOMABUS';
     if (comp.includes('CKD')) return 'CKD';
+    if (comp.includes('SUCC')) return 'Succursale';
     return 'SEFAMAR';
   };
 
-  const renderCompanyBadge = (comp) => {
+  const renderCompanyBadge = (comp, req) => {
+    const city = req ? (req.requester_city || req.city || '') : '';
     if (comp === 'SOMABUS') {
       return (
         <span style={{
@@ -96,6 +98,26 @@ const PurchasingDashboard = () => {
           whiteSpace: 'nowrap'
         }}>
           CKD
+        </span>
+      );
+    }
+    if (comp === 'Succursale') {
+      return (
+        <span style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.25rem',
+          padding: '0.2rem 0.55rem',
+          borderRadius: '6px',
+          fontSize: '0.72rem',
+          fontWeight: 700,
+          backgroundColor: '#ccfbf1',
+          color: '#0f766e',
+          border: '1px solid #99f6e4',
+          letterSpacing: '0.02em',
+          whiteSpace: 'nowrap'
+        }}>
+          Succursale{city ? ` - ${city}` : ''}
         </span>
       );
     }
@@ -174,24 +196,26 @@ const PurchasingDashboard = () => {
 
   // Comptages des demandes par entreprise
   const companyCounts = useMemo(() => {
-    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0 };
+    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0, Succursale: 0 };
     requests.forEach(req => {
       const comp = getRequestCompany(req);
       counts.Tous++;
       if (comp === 'SOMABUS') counts.SOMABUS++;
       else if (comp === 'CKD') counts.CKD++;
+      else if (comp === 'Succursale') counts.Succursale++;
       else counts.SEFAMAR++;
     });
     return counts;
   }, [requests]);
 
   const pendingCompanyCounts = useMemo(() => {
-    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0 };
+    const counts = { Tous: 0, SEFAMAR: 0, SOMABUS: 0, CKD: 0, Succursale: 0 };
     requests.filter(req => req.status === 'En attente').forEach(req => {
       const comp = getRequestCompany(req);
       counts.Tous++;
       if (comp === 'SOMABUS') counts.SOMABUS++;
       else if (comp === 'CKD') counts.CKD++;
+      else if (comp === 'Succursale') counts.Succursale++;
       else counts.SEFAMAR++;
     });
     return counts;
@@ -351,13 +375,15 @@ const PurchasingDashboard = () => {
  
   const handleDownloadRequest = (req) => {
     const comp = getRequestCompany(req);
+    const city = req.requester_city || req.city || '';
     const isSomabus = comp === 'SOMABUS';
     const isCkd = comp === 'CKD';
+    const isSuccursale = comp === 'Succursale';
 
     // Nom du document lorsqu'il est téléchargé / enregistré au format PDF
-    const docTitle = `Demande_Achat_${comp}_${req.order_number}`;
+    const docTitle = `Demande_Achat_${isSuccursale ? ('Succursale_' + (city || '')) : comp}_${req.order_number}`;
     const companyLogo = isSomabus ? '/somabus_logo.png' : '/logo.png';
-    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'MAN Truck & Bus Maroc (SEFAMAR)';
+    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : isSuccursale ? `Succursale MAN Truck & Bus${city ? ' - ' + city : ''}` : 'MAN Truck & Bus Maroc (SEFAMAR)';
 
     const itemsHtml = (req.items || []).map(it => `
       <tr>
@@ -770,9 +796,11 @@ const PurchasingDashboard = () => {
               { id: 'SEFAMAR', label: 'SEFAMAR (MAN Maroc)', count: companyCounts.SEFAMAR, pending: pendingCompanyCounts.SEFAMAR },
               { id: 'SOMABUS', label: 'SOMABUS', count: companyCounts.SOMABUS, pending: pendingCompanyCounts.SOMABUS },
               { id: 'CKD', label: 'CKD', count: companyCounts.CKD, pending: pendingCompanyCounts.CKD },
+              { id: 'Succursale', label: 'Succursales (Villes)', count: companyCounts.Succursale, pending: pendingCompanyCounts.Succursale },
             ].map(tab => {
               const isActive = companyFilter === tab.id;
               const isSoma = tab.id === 'SOMABUS';
+              const isSucc = tab.id === 'Succursale';
               return (
                 <button
                   key={tab.id}
@@ -790,13 +818,13 @@ const PurchasingDashboard = () => {
                     fontSize: '0.825rem',
                     fontWeight: isActive ? 700 : 500,
                     border: isActive 
-                      ? (isSoma ? '2px solid #b45309' : '2px solid #0f172a') 
+                      ? (isSoma ? '2px solid #b45309' : isSucc ? '2px solid #0d9488' : '2px solid #0f172a') 
                       : '1px solid #cbd5e1',
                     backgroundColor: isActive 
-                      ? (isSoma ? '#fef3c7' : '#0f172a') 
+                      ? (isSoma ? '#fef3c7' : isSucc ? '#ccfbf1' : '#0f172a') 
                       : '#f8fafc',
                     color: isActive 
-                      ? (isSoma ? '#92400e' : '#ffffff') 
+                      ? (isSoma ? '#92400e' : isSucc ? '#0f766e' : '#ffffff') 
                       : '#334155',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
@@ -810,10 +838,10 @@ const PurchasingDashboard = () => {
                     borderRadius: '999px',
                     fontWeight: 700,
                     backgroundColor: isActive 
-                      ? (isSoma ? '#fde68a' : 'rgba(255,255,255,0.25)') 
+                      ? (isSoma ? '#fde68a' : isSucc ? '#99f6e4' : 'rgba(255,255,255,0.25)') 
                       : '#e2e8f0',
                     color: isActive 
-                      ? (isSoma ? '#78350f' : '#ffffff') 
+                      ? (isSoma ? '#78350f' : isSucc ? '#0f766e' : '#ffffff') 
                       : '#475569'
                   }}>
                     {tab.pending > 0 ? `${tab.pending} en attente` : `${tab.count}`}
@@ -906,7 +934,7 @@ const PurchasingDashboard = () => {
                       )}
                     </td>
                     <td>
-                      {renderCompanyBadge(getRequestCompany(req))}
+                      {renderCompanyBadge(getRequestCompany(req), req)}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>
@@ -1131,7 +1159,7 @@ const PurchasingDashboard = () => {
                       )}
                     </td>
                     <td>
-                      {renderCompanyBadge(getRequestCompany(order))}
+                      {renderCompanyBadge(getRequestCompany(order), order)}
                     </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.85rem' }}>

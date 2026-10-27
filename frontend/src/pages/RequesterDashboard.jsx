@@ -19,7 +19,7 @@ const RequesterDashboard = () => {
   const [submitting, setSubmitting] = useState(false);
   const [productSuggestions, setProductSuggestions] = useState([]);
   const [statusFilter, setStatusFilter] = useState('Tous');
-  
+
   // States for request details modal
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const [detailsRequest, setDetailsRequest] = useState(null);
@@ -32,7 +32,7 @@ const RequesterDashboard = () => {
     assignment: '',
     observation: ''
   });
-  
+
   const [items, setItems] = useState([{ product: '', qty: '' }]);
 
   const userId = localStorage.getItem('userId');
@@ -84,7 +84,7 @@ const RequesterDashboard = () => {
     }
   };
 
-  const handleChange = (e) => setFormData({...formData, [e.target.name]: e.target.value});
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleFileChange = (e) => {
     const selected = Array.from(e.target.files || []);
@@ -139,11 +139,13 @@ const RequesterDashboard = () => {
   const handlePrintBlankForm = () => {
     const printWindow = window.open('', '_blank');
     const userCompany = (localStorage.getItem('userCompany') || 'SEFAMAR').toUpperCase();
+    const userCity = localStorage.getItem('userCity') || '';
     const isSomabus = userCompany.includes('SOMABUS');
     const isCkd = userCompany.includes('CKD');
-    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'MAN Truck & Bus Maroc';
+    const isSuccursale = userCompany.includes('SUCCURSALE');
+    const companyDisplayName = isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : isSuccursale ? `Succursale MAN Truck & Bus${userCity ? ' - ' + userCity : ''}` : 'MAN Truck & Bus Maroc';
     const companyLogo = isSomabus ? '/somabus_logo.png' : '/logo.png';
-    const docTitle = `Fiche_Demande_Achat_${isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : 'SEFAMAR'}`;
+    const docTitle = `Fiche_Demande_Achat_${isSomabus ? 'SOMABUS' : isCkd ? 'CKD' : isSuccursale ? ('Succursale_' + (userCity || '')) : 'SEFAMAR'}`;
 
     const validItems = items.filter(it => it.product && it.product.trim());
     const rowsHtml = validItems.length > 0
@@ -261,7 +263,7 @@ const RequesterDashboard = () => {
       toast.error("Veuillez joindre la photo ou le scan de la feuille signée par votre validateur.");
       return;
     }
-    
+
     setSubmitting(true);
     setError('');
 
@@ -275,12 +277,14 @@ const RequesterDashboard = () => {
       }
 
       const userComp = localStorage.getItem('userCompany') || '';
+      const userCity = localStorage.getItem('userCity') || '';
       const userDept = localStorage.getItem('userDepartment') || '';
 
       if (requestFiles.length > 0) {
         const payload = new FormData();
         payload.append('requester', currentUserId);
         if (userComp) payload.append('company', userComp);
+        if (userCity) payload.append('city', userCity);
         if (userDept) payload.append('department', userDept);
         payload.append('assignment', formData.assignment);
         payload.append('observation', formData.observation || '');
@@ -297,6 +301,7 @@ const RequesterDashboard = () => {
         const payload = {
           requester: currentUserId,
           company: userComp || undefined,
+          city: userCity || undefined,
           department: userDept || undefined,
           assignment: formData.assignment,
           observation: formData.observation || '',
@@ -375,9 +380,9 @@ const RequesterDashboard = () => {
                 Votre validateur ne passe pas par l'application : faites signer la feuille papier par votre responsable, puis téléversez la photo signée ci-dessous.
               </p>
             </div>
-            <button 
-              type="button" 
-              className="btn btn-outline" 
+            <button
+              type="button"
+              className="btn btn-outline"
               style={{ borderColor: '#16a34a', color: '#16a34a', backgroundColor: '#ffffff', fontSize: '0.8125rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
               onClick={handlePrintBlankForm}
             >
@@ -390,7 +395,7 @@ const RequesterDashboard = () => {
       <div className="card">
         <h3>Nouvelle Demande</h3>
         <p className="text-muted mb-4 text-sm">Remplissez ce formulaire pour créer une nouvelle demande d'achat.</p>
-        
+
         <form onSubmit={handleSubmit}>
           <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
@@ -410,13 +415,13 @@ const RequesterDashboard = () => {
           <div className="flex gap-4" style={{ marginBottom: '1rem' }}>
             <div className="form-group" style={{ flex: 1 }}>
               <label className="form-label">Affectation</label>
-              <input 
-                type="text" 
-                name="assignment" 
-                value={formData.assignment} 
-                onChange={handleChange} 
-                className="form-input" 
-                required 
+              <input
+                type="text"
+                name="assignment"
+                value={formData.assignment}
+                onChange={handleChange}
+                className="form-input"
+                required
                 placeholder="Ex: Camion MAN S62"
                 disabled={submitting}
               />
@@ -430,30 +435,30 @@ const RequesterDashboard = () => {
                 <Plus size={14} /> Ajouter un article
               </button>
             </div>
-            
+
             {items.map((item, index) => (
               <div key={index} className="flex gap-4 items-start" style={{ marginBottom: index === items.length - 1 ? '0' : '1rem' }}>
                 <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
-                  <input 
-                    type="text" 
-                    name="product" 
-                    value={item.product} 
-                    onChange={(e) => handleItemChange(index, e)} 
-                    className="form-input" 
-                    required 
+                  <input
+                    type="text"
+                    name="product"
+                    value={item.product}
+                    onChange={(e) => handleItemChange(index, e)}
+                    className="form-input"
+                    required
                     placeholder="Nom du produit (Ex: Filtre à air)"
                     disabled={submitting}
                     list="product-suggestions"
                   />
                 </div>
                 <div className="form-group" style={{ width: '120px', marginBottom: 0 }}>
-                  <input 
-                    type="number" 
-                    name="qty" 
-                    value={item.qty} 
-                    onChange={(e) => handleItemChange(index, e)} 
-                    className="form-input" 
-                    required 
+                  <input
+                    type="number"
+                    name="qty"
+                    value={item.qty}
+                    onChange={(e) => handleItemChange(index, e)}
+                    className="form-input"
+                    required
                     min="1"
                     placeholder="Qté"
                     disabled={submitting}
@@ -470,12 +475,12 @@ const RequesterDashboard = () => {
 
           <div className="form-group">
             <label className="form-label">Observation</label>
-            <textarea 
-              name="observation" 
-              value={formData.observation} 
-              onChange={handleChange} 
-              className="form-input" 
-              rows="3" 
+            <textarea
+              name="observation"
+              value={formData.observation}
+              onChange={handleChange}
+              className="form-input"
+              rows="3"
               placeholder="Détails supplémentaires..."
               disabled={submitting}
             ></textarea>
@@ -488,12 +493,12 @@ const RequesterDashboard = () => {
               {isAccountingUser ? 'Photo ou Scan de la Demande Signée (Obligatoire)' : 'Fichier ou document joint (Optionnel)'}
             </label>
             <p className="text-xs text-muted mb-3">
-              {isAccountingUser 
+              {isAccountingUser
                 ? 'Prenez en photo ou scannez la feuille signée et cachetée (vous pouvez sélectionner une ou plusieurs images/pages, ou un fichier PDF).'
                 : 'Joindre un ou plusieurs documents/photos si nécessaire (JPG, PNG, PDF).'}
             </p>
-            <input 
-              type="file" 
+            <input
+              type="file"
               multiple
               accept="image/*,application/pdf"
               onChange={handleFileChange}
@@ -509,13 +514,13 @@ const RequesterDashboard = () => {
                 </p>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                   {filePreviews.map((p, idx) => (
-                    <div 
-                      key={idx} 
-                      style={{ 
-                        position: 'relative', 
-                        padding: '0.5rem', 
-                        border: '1px solid #cbd5e1', 
-                        borderRadius: '6px', 
+                    <div
+                      key={idx}
+                      style={{
+                        position: 'relative',
+                        padding: '0.5rem',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '6px',
                         backgroundColor: '#ffffff',
                         width: '130px',
                         textAlign: 'center',
@@ -523,10 +528,10 @@ const RequesterDashboard = () => {
                       }}
                     >
                       {p.isImage ? (
-                        <img 
-                          src={p.url} 
-                          alt={p.name} 
-                          style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '4px', marginBottom: '0.35rem' }} 
+                        <img
+                          src={p.url}
+                          alt={p.name}
+                          style={{ width: '100%', height: '90px', objectFit: 'cover', borderRadius: '4px', marginBottom: '0.35rem' }}
                         />
                       ) : (
                         <div style={{ height: '90px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', backgroundColor: '#f1f5f9', borderRadius: '4px', marginBottom: '0.35rem' }}>
@@ -588,8 +593,8 @@ const RequesterDashboard = () => {
           <h3 style={{ margin: 0 }}>Mes Demandes</h3>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>Statut :</span>
-            <select 
-              value={statusFilter} 
+            <select
+              value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               className="form-input"
               style={{ width: '160px', padding: '0.35rem 0.5rem', fontSize: '0.8125rem' }}
@@ -602,7 +607,7 @@ const RequesterDashboard = () => {
             </select>
           </div>
         </div>
-        
+
         {loading ? (
           <p style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}>Chargement des données...</p>
         ) : (
@@ -625,9 +630,9 @@ const RequesterDashboard = () => {
                     <td style={{ fontWeight: 500 }}>
                       <div>{req.order_number}</div>
                       {req.request_pdf && (
-                        <a 
-                          href={getMediaUrl(req.request_pdf)} 
-                          target="_blank" 
+                        <a
+                          href={getMediaUrl(req.request_pdf)}
+                          target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
                           style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
@@ -648,9 +653,9 @@ const RequesterDashboard = () => {
                     <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>{req.date_created}</td>
                     <td>
                       {req.is_validated ? (
-                        <span className="badge" style={{ 
-                          backgroundColor: '#dcfce7', 
-                          color: '#15803d', 
+                        <span className="badge" style={{
+                          backgroundColor: '#dcfce7',
+                          color: '#15803d',
                           border: '1px solid #bbf7d0',
                           padding: '0.25rem 0.5rem',
                           borderRadius: 'var(--radius-sm)',
@@ -661,9 +666,9 @@ const RequesterDashboard = () => {
                           Validé ({req.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : req.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : req.validated_by_name === 'obelkadi.man@sefamar.ma' ? 'O. BELKADI (Commercial)' : req.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : req.validated_by_name || 'Achats'})
                         </span>
                       ) : isAccountingUser ? (
-                        <span className="badge" style={{ 
-                          backgroundColor: '#fef3c7', 
-                          color: '#92400e', 
+                        <span className="badge" style={{
+                          backgroundColor: '#fef3c7',
+                          color: '#92400e',
                           border: '1px solid #fde68a',
                           padding: '0.25rem 0.5rem',
                           borderRadius: 'var(--radius-sm)',
@@ -674,9 +679,9 @@ const RequesterDashboard = () => {
                           Feuille signée transmise
                         </span>
                       ) : (
-                        <span className="badge" style={{ 
-                          backgroundColor: '#fee2e2', 
-                          color: '#b91c1c', 
+                        <span className="badge" style={{
+                          backgroundColor: '#fee2e2',
+                          color: '#b91c1c',
                           border: '1px solid #fecaca',
                           padding: '0.25rem 0.5rem',
                           borderRadius: 'var(--radius-sm)',
@@ -689,19 +694,18 @@ const RequesterDashboard = () => {
                       )}
                     </td>
                     <td>
-                      <span className={`badge badge-${
-                        req.status === 'En attente' ? 'pending' : 
-                        req.status === 'Approuvé' ? 'approved' : 
-                        req.status === 'Commandé' ? 'ordered' : 
-                        req.status === 'Reçu' ? 'received' : 'rejected'
-                      }`}>
+                      <span className={`badge badge-${req.status === 'En attente' ? 'pending' :
+                          req.status === 'Approuvé' ? 'approved' :
+                            req.status === 'Commandé' ? 'ordered' :
+                              req.status === 'Reçu' ? 'received' : 'rejected'
+                        }`}>
                         {req.status}
                       </span>
                       {req.status === 'Refusé' && req.refusal_reason && (
-                        <div style={{ 
-                          fontSize: '0.7rem', 
-                          color: '#b91c1c', 
-                          marginTop: '0.25rem', 
+                        <div style={{
+                          fontSize: '0.7rem',
+                          color: '#b91c1c',
+                          marginTop: '0.25rem',
                           fontWeight: 500,
                           backgroundColor: '#fef2f2',
                           padding: '0.25rem',
@@ -713,9 +717,9 @@ const RequesterDashboard = () => {
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <button 
-                        className="btn btn-outline" 
-                        style={{ padding: '0.25rem 0.5rem' }} 
+                      <button
+                        className="btn btn-outline"
+                        style={{ padding: '0.25rem 0.5rem' }}
                         onClick={() => {
                           setDetailsRequest(req);
                           setIsDetailsModalOpen(true);
@@ -768,9 +772,9 @@ const RequesterDashboard = () => {
                   <p className="text-xs text-muted">Validation</p>
                   <div style={{ marginTop: '0.25rem' }}>
                     {detailsRequest.is_validated ? (
-                      <span className="badge" style={{ 
-                        backgroundColor: '#dcfce7', 
-                        color: '#15803d', 
+                      <span className="badge" style={{
+                        backgroundColor: '#dcfce7',
+                        color: '#15803d',
                         border: '1px solid #bbf7d0',
                         padding: '0.25rem 0.5rem',
                         borderRadius: 'var(--radius-sm)',
@@ -780,9 +784,9 @@ const RequesterDashboard = () => {
                         Validé ({detailsRequest.validated_by_name === 'man@sefamar.ma' ? 'Mme EL MANSOURI' : detailsRequest.validated_by_name === 'chadi@sefamar.ma' ? 'Chadi' : detailsRequest.validated_by_name === 'obelkadi.man@sefamar.ma' ? 'O. BELKADI (Commercial)' : detailsRequest.validated_by_name === 'g.benelhassane@sefamar.ma' ? 'Mme BENELHASSANE' : detailsRequest.validated_by_name})
                       </span>
                     ) : (
-                      <span className="badge" style={{ 
-                        backgroundColor: '#fee2e2', 
-                        color: '#b91c1c', 
+                      <span className="badge" style={{
+                        backgroundColor: '#fee2e2',
+                        color: '#b91c1c',
                         border: '1px solid #fecaca',
                         padding: '0.25rem 0.5rem',
                         borderRadius: 'var(--radius-sm)',
@@ -797,12 +801,11 @@ const RequesterDashboard = () => {
                 <div>
                   <p className="text-xs text-muted">Statut Achat</p>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <span className={`badge badge-${
-                      detailsRequest.status === 'En attente' ? 'pending' : 
-                      detailsRequest.status === 'Approuvé' ? 'approved' : 
-                      detailsRequest.status === 'Commandé' ? 'ordered' : 
-                      detailsRequest.status === 'Reçu' ? 'received' : 'rejected'
-                    }`}>
+                    <span className={`badge badge-${detailsRequest.status === 'En attente' ? 'pending' :
+                        detailsRequest.status === 'Approuvé' ? 'approved' :
+                          detailsRequest.status === 'Commandé' ? 'ordered' :
+                            detailsRequest.status === 'Reçu' ? 'received' : 'rejected'
+                      }`}>
                       {detailsRequest.status}
                     </span>
                   </div>
@@ -812,9 +815,9 @@ const RequesterDashboard = () => {
               {detailsRequest.request_pdf && (
                 <div style={{ backgroundColor: 'var(--color-bg)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                   <p className="text-xs text-muted mb-1">Document de Demande Joint</p>
-                  <a 
-                    href={getMediaUrl(detailsRequest.request_pdf)} 
-                    target="_blank" 
+                  <a
+                    href={getMediaUrl(detailsRequest.request_pdf)}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2"
                     style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}
@@ -850,10 +853,10 @@ const RequesterDashboard = () => {
               {detailsRequest.observation && (
                 <div>
                   <p className="text-xs text-muted mb-1">Observation</p>
-                  <div style={{ 
-                    backgroundColor: 'var(--color-bg)', 
-                    padding: '1rem', 
-                    borderRadius: 'var(--radius-md)', 
+                  <div style={{
+                    backgroundColor: 'var(--color-bg)',
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     maxHeight: '200px',
                     overflowY: 'auto',

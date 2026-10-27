@@ -14,19 +14,32 @@ class Profile(models.Model):
         ('SEFAMAR', 'SEFAMAR'),
         ('SOMABUS', 'SOMABUS'),
         ('CKD', 'CKD'),
+        ('Succursale', 'Succursale'),
+    ]
+    CITY_CHOICES = [
+        ('', 'Non spécifiée / Siège'),
+        ('Agadir', 'Agadir'),
+        ('Meknès', 'Meknès'),
+        ('Laâyoune', 'Laâyoune'),
+        ('Marrakech', 'Marrakech'),
+        ('Tanger', 'Tanger'),
+        ('Nador', 'Nador'),
+        ('Dakhla', 'Dakhla'),
     ]
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     full_name = models.CharField(max_length=150, blank=True, default='')
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='requester')
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
+    city = models.CharField(max_length=50, blank=True, default='')
     department = models.CharField(max_length=100, blank=True, default='')
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
     validators = models.ManyToManyField(User, blank=True, related_name='supervised_profiles')
 
     def __str__(self):
         name_str = f"{self.full_name} ({self.user.username})" if self.full_name else self.user.username
+        city_str = f" - {self.city}" if self.city else ""
         dept_str = f" - {self.department}" if self.department else ""
-        return f"{name_str} ({self.company}{dept_str} - {self.get_role_display()})"
+        return f"{name_str} ({self.company}{city_str}{dept_str} - {self.get_role_display()})"
 
 
 class PurchaseRequest(models.Model):
@@ -40,11 +53,13 @@ class PurchaseRequest(models.Model):
         ('SEFAMAR', 'SEFAMAR'),
         ('SOMABUS', 'SOMABUS'),
         ('CKD', 'CKD'),
+        ('Succursale', 'Succursale'),
     ]
     
     order_number = models.CharField(max_length=50, unique=True, editable=False)
     requester = models.ForeignKey(User, on_delete=models.CASCADE, related_name='requests')
     company = models.CharField(max_length=50, choices=COMPANY_CHOICES, default='SEFAMAR')
+    city = models.CharField(max_length=50, blank=True, default='')
     department = models.CharField(max_length=100, blank=True, default='')
     assignment = models.TextField(blank=True, default='')
     observation = models.TextField(blank=True, null=True)
@@ -62,6 +77,8 @@ class PurchaseRequest(models.Model):
         if self.requester and hasattr(self.requester, 'profile') and self.requester.profile:
             if self.requester.profile.company and (not self.company or (self.company == 'SEFAMAR' and self.requester.profile.company != 'SEFAMAR')):
                 self.company = self.requester.profile.company
+            if not self.city and self.requester.profile.city:
+                self.city = self.requester.profile.city
             if not self.department and self.requester.profile.department:
                 self.department = self.requester.profile.department
         if not self.order_number:

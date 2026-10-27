@@ -14,7 +14,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = Profile
         fields = [
-            'role', 'company', 'department', 'full_name', 
+            'role', 'company', 'city', 'department', 'full_name', 
             'validator', 'validator_id', 'validator_name',
             'validator_ids', 'assigned_requester_ids', 'assigned_requesters'
         ]
@@ -47,7 +47,8 @@ class ProfileSerializer(serializers.ModelSerializer):
                     'display_name': p.full_name or p.user.get_full_name() or p.user.username,
                     'email': p.user.email,
                     'department': p.department,
-                    'company': p.company
+                    'company': p.company,
+                    'city': p.city
                 }
                 for p in qs
             ]
@@ -89,6 +90,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
     requester_company = serializers.ReadOnlyField(source='requester.profile.company')
+    requester_city = serializers.ReadOnlyField(source='requester.profile.city')
     requester_department = serializers.ReadOnlyField(source='requester.profile.department')
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
@@ -100,6 +102,7 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
         model = PurchaseRequest
         fields = [
             'id', 'order_number', 'requester', 'requester_name', 'company', 'requester_company',
+            'city', 'requester_city',
             'department', 'requester_department',
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
@@ -122,11 +125,13 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
-        # Hériter obligatoirement de l'entreprise et du service du demandeur
+        # Hériter obligatoirement de l'entreprise, ville et service du demandeur
         requester = validated_data.get('requester')
         if requester and hasattr(requester, 'profile') and requester.profile:
             if requester.profile.company:
                 validated_data['company'] = requester.profile.company
+            if requester.profile.city and not validated_data.get('city'):
+                validated_data['city'] = requester.profile.city
             if requester.profile.department and not validated_data.get('department'):
                 validated_data['department'] = requester.profile.department
 

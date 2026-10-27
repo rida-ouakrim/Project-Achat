@@ -34,6 +34,7 @@ const ValidationDashboard = () => {
   const userName = localStorage.getItem('userName');
   const userRole = localStorage.getItem('userRole');
   const userCompany = (localStorage.getItem('userCompany') || 'SEFAMAR').toUpperCase();
+  const userCity = (localStorage.getItem('userCity') || '').trim();
   const isSuperUser = ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes((userName || '').toLowerCase()) || userRole === 'admin';
   const [companyFilter, setCompanyFilter] = useState('Tous');
 
@@ -50,11 +51,11 @@ const ValidationDashboard = () => {
       createdDate = new Date(dateStr);
     }
     if (isNaN(createdDate.getTime())) return null;
-    
+
     const today = new Date();
     createdDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
-    
+
     const diffTime = today.getTime() - createdDate.getTime();
     const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
     return diffDays >= 0 ? diffDays : 0;
@@ -65,10 +66,10 @@ const ValidationDashboard = () => {
     try {
       const response = await fetchRequests();
       const allRequests = response.data || [];
-      
+
       // Filtrer pour n'afficher que les demandes en attente de validation (exclure comptabilité qui valide sur papier)
       const currentUserId = parseInt(userId);
-      
+
       const pendingValidation = allRequests.filter(req => {
         const reqName = (req.requester_name || '').toLowerCase();
         const isAccounting = reqName === 'comptabilite@sefamar.ma' || reqName.includes('compta');
@@ -87,9 +88,16 @@ const ValidationDashboard = () => {
         }
 
         // 2. Si aucun validateur spécifique : validation générale par entreprise
-        // Le validateur de SOMABUS voit toutes les demandes SOMABUS sans validateur attitré
         if (!isSuperUser && reqCompany !== userCompany) {
           return false;
+        }
+
+        // 3. Si Succursale : le validateur d'une succursale ne voit que les demandes de sa propre ville
+        if (!isSuperUser && reqCompany === 'SUCCURSALE') {
+          const reqCity = (req.requester_city || req.city || '').trim().toUpperCase();
+          if (userCity && reqCity && reqCity !== userCity.toUpperCase()) {
+            return false;
+          }
         }
 
         // Si super-utilisateur avec filtre entreprise actif
@@ -100,12 +108,16 @@ const ValidationDashboard = () => {
         return true;
       });
       setPendingRequests(pendingValidation);
-      
+
       // Filtrer pour afficher l'historique des validations par ce validateur
       const historyValidation = allRequests.filter(req => {
         if (!req.is_validated) return false;
         const reqCompany = (req.requester_company || req.company || 'SEFAMAR').toUpperCase();
         if (!isSuperUser && reqCompany !== userCompany) return false;
+        if (!isSuperUser && reqCompany === 'SUCCURSALE') {
+          const reqCity = (req.requester_city || req.city || '').trim().toUpperCase();
+          if (userCity && reqCity && reqCity !== userCity.toUpperCase()) return false;
+        }
         if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) return false;
         return isSuperUser || req.validated_by === currentUserId || req.validated_by_name === userName;
       });
@@ -142,9 +154,9 @@ const ValidationDashboard = () => {
     if (!refusalReason.trim() || !selectedRequestId) return;
     setRefusingId(selectedRequestId);
     try {
-      await updateRequest(selectedRequestId, { 
-        status: 'Refusé', 
-        refusal_reason: refusalReason.trim() 
+      await updateRequest(selectedRequestId, {
+        status: 'Refusé',
+        refusal_reason: refusalReason.trim()
       });
       toast.success("Demande refusée avec succès !");
       setIsRefusalModalOpen(false);
@@ -256,9 +268,9 @@ const ValidationDashboard = () => {
             {isSuperUser && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société :</span>
-                <select 
-                  className="form-input" 
-                  value={companyFilter} 
+                <select
+                  className="form-input"
+                  value={companyFilter}
                   onChange={(e) => setCompanyFilter(e.target.value)}
                   style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
                 >
@@ -270,7 +282,7 @@ const ValidationDashboard = () => {
               </div>
             )}
           </div>
-          
+
           {loading ? (
             <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement des demandes...</p>
           ) : (
@@ -294,9 +306,9 @@ const ValidationDashboard = () => {
                       <td style={{ fontWeight: 500 }}>
                         <div>{req.order_number}</div>
                         {req.request_pdf && (
-                          <a 
-                            href={getMediaUrl(req.request_pdf)} 
-                            target="_blank" 
+                          <a
+                            href={getMediaUrl(req.request_pdf)}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
                             style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
@@ -309,14 +321,17 @@ const ValidationDashboard = () => {
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {(() => {
                           const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
-                          const style = comp === 'SOMABUS' 
+                          const city = req.requester_city || req.city || '';
+                          const style = comp === 'SOMABUS'
                             ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
                             : comp === 'CKD'
-                            ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
-                            : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
+                              ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
+                              : comp === 'SUCCURSALE'
+                                ? { backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }
+                                : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
                           return (
                             <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                              {comp}
+                              {comp === 'SUCCURSALE' && city ? `Succursale - ${city}` : comp}
                             </span>
                           );
                         })()}
@@ -334,9 +349,9 @@ const ValidationDashboard = () => {
                           const delayText = delay === 0 ? "Aujourd'hui" : delay === 1 ? "Hier" : `Envoyée il y a ${delay} jours`;
                           const isDelayed = delay >= 2;
                           return (
-                            <div style={{ 
-                              fontSize: '0.72rem', 
-                              color: isDelayed ? '#ef4444' : '#64748b', 
+                            <div style={{
+                              fontSize: '0.72rem',
+                              color: isDelayed ? '#ef4444' : '#64748b',
                               fontWeight: isDelayed ? 600 : 400,
                               display: 'flex',
                               alignItems: 'center',
@@ -365,8 +380,8 @@ const ValidationDashboard = () => {
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         <div className="flex gap-2 justify-center">
-                          <button 
-                            className="btn btn-outline" 
+                          <button
+                            className="btn btn-outline"
                             style={{ padding: '0.4rem 0.6rem' }}
                             onClick={() => {
                               setDetailsRequest(req);
@@ -376,12 +391,12 @@ const ValidationDashboard = () => {
                           >
                             <Eye size={14} />
                           </button>
-                          <button 
-                            className="btn btn-outline" 
-                            style={{ 
-                              color: '#ef4444', 
-                              borderColor: '#fee2e2', 
-                              backgroundColor: '#fff5f5', 
+                          <button
+                            className="btn btn-outline"
+                            style={{
+                              color: '#ef4444',
+                              borderColor: '#fee2e2',
+                              backgroundColor: '#fff5f5',
                               padding: '0.4rem 0.8rem',
                               fontSize: '0.8125rem',
                               display: 'inline-flex',
@@ -397,11 +412,11 @@ const ValidationDashboard = () => {
                             <X size={14} />
                             Refuser
                           </button>
-                          <button 
-                            className="btn btn-primary" 
-                            style={{ 
-                              backgroundColor: 'var(--color-success)', 
-                              borderColor: 'var(--color-success)', 
+                          <button
+                            className="btn btn-primary"
+                            style={{
+                              backgroundColor: 'var(--color-success)',
+                              borderColor: 'var(--color-success)',
                               padding: '0.4rem 0.8rem',
                               fontSize: '0.8125rem',
                               display: 'inline-flex',
@@ -436,7 +451,7 @@ const ValidationDashboard = () => {
       ) : (
         <div className="card accent-success">
           <h3>Historique de vos validations</h3>
-          
+
           {loading ? (
             <p style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>Chargement de l'historique...</p>
           ) : (
@@ -460,9 +475,9 @@ const ValidationDashboard = () => {
                       <td style={{ fontWeight: 500 }}>
                         <div>{req.order_number}</div>
                         {req.request_pdf && (
-                          <a 
-                            href={getMediaUrl(req.request_pdf)} 
-                            target="_blank" 
+                          <a
+                            href={getMediaUrl(req.request_pdf)}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center gap-1 mt-1 text-xs text-blue-600 hover:underline"
                             style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.25rem' }}
@@ -475,14 +490,17 @@ const ValidationDashboard = () => {
                       <td style={{ whiteSpace: 'nowrap' }}>
                         {(() => {
                           const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
-                          const style = comp === 'SOMABUS' 
+                          const city = req.requester_city || req.city || '';
+                          const style = comp === 'SOMABUS'
                             ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
                             : comp === 'CKD'
-                            ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
-                            : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
+                              ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
+                              : comp === 'SUCCURSALE'
+                                ? { backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }
+                                : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
                           return (
                             <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                              {comp}
+                              {comp === 'SUCCURSALE' && city ? `Succursale - ${city}` : comp}
                             </span>
                           );
                         })()}
@@ -505,17 +523,16 @@ const ValidationDashboard = () => {
                       </td>
                       <td style={{ maxWidth: '180px', wordBreak: 'break-all' }}>{req.assignment || '-'}</td>
                       <td>
-                        <span className={`badge badge-${
-                          req.status === 'En attente' ? 'approved' : 
-                          req.status === 'Commandé' ? 'ordered' : 
-                          req.status === 'Reçu' ? 'received' : 'rejected'
-                        }`}>
+                        <span className={`badge badge-${req.status === 'En attente' ? 'approved' :
+                            req.status === 'Commandé' ? 'ordered' :
+                              req.status === 'Reçu' ? 'received' : 'rejected'
+                          }`}>
                           {req.status === 'En attente' ? 'Validé' : req.status}
                         </span>
                       </td>
                       <td style={{ textAlign: 'center' }}>
-                        <button 
-                          className="btn btn-outline" 
+                        <button
+                          className="btn btn-outline"
                           style={{ padding: '0.4rem 0.6rem' }}
                           onClick={() => {
                             setDetailsRequest(req);
@@ -570,9 +587,9 @@ const ValidationDashboard = () => {
                   <p className="text-xs text-muted">Validation</p>
                   <div style={{ marginTop: '0.25rem' }}>
                     {detailsRequest.is_validated ? (
-                      <span className="badge" style={{ 
-                        backgroundColor: '#dcfce7', 
-                        color: '#15803d', 
+                      <span className="badge" style={{
+                        backgroundColor: '#dcfce7',
+                        color: '#15803d',
                         border: '1px solid #bbf7d0',
                         padding: '0.25rem 0.5rem',
                         borderRadius: 'var(--radius-sm)',
@@ -591,12 +608,11 @@ const ValidationDashboard = () => {
                 <div>
                   <p className="text-xs text-muted">Statut Achat</p>
                   <div style={{ marginTop: '0.25rem' }}>
-                    <span className={`badge badge-${
-                      detailsRequest.status === 'En attente' ? 'pending' : 
-                      detailsRequest.status === 'Approuvé' ? 'approved' : 
-                      detailsRequest.status === 'Commandé' ? 'ordered' : 
-                      detailsRequest.status === 'Reçu' ? 'received' : 'rejected'
-                    }`}>
+                    <span className={`badge badge-${detailsRequest.status === 'En attente' ? 'pending' :
+                        detailsRequest.status === 'Approuvé' ? 'approved' :
+                          detailsRequest.status === 'Commandé' ? 'ordered' :
+                            detailsRequest.status === 'Reçu' ? 'received' : 'rejected'
+                      }`}>
                       {detailsRequest.status}
                     </span>
                   </div>
@@ -606,9 +622,9 @@ const ValidationDashboard = () => {
               {detailsRequest.request_pdf && (
                 <div style={{ backgroundColor: 'var(--color-bg)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}>
                   <p className="text-xs text-muted mb-1">Document de Demande Joint</p>
-                  <a 
-                    href={getMediaUrl(detailsRequest.request_pdf)} 
-                    target="_blank" 
+                  <a
+                    href={getMediaUrl(detailsRequest.request_pdf)}
+                    target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2"
                     style={{ color: '#2563eb', fontWeight: 600, display: 'inline-flex', alignItems: 'center' }}
@@ -644,10 +660,10 @@ const ValidationDashboard = () => {
               {detailsRequest.observation && (
                 <div>
                   <p className="text-xs text-muted mb-1">Observation</p>
-                  <div style={{ 
-                    backgroundColor: 'var(--color-bg)', 
-                    padding: '1rem', 
-                    borderRadius: 'var(--radius-md)', 
+                  <div style={{
+                    backgroundColor: 'var(--color-bg)',
+                    padding: '1rem',
+                    borderRadius: 'var(--radius-md)',
                     border: '1px solid var(--color-border)',
                     maxHeight: '200px',
                     overflowY: 'auto',
@@ -673,13 +689,13 @@ const ValidationDashboard = () => {
           <div className="modal-content" style={{ maxWidth: '450px' }}>
             <div className="modal-header">
               <h3 style={{ color: '#b91c1c' }}>Motif de Refus</h3>
-              <button 
-                className="btn btn-outline" 
+              <button
+                className="btn btn-outline"
                 onClick={() => {
                   setIsRefusalModalOpen(false);
                   setRefusalReason('');
                   setSelectedRequestId(null);
-                }} 
+                }}
                 style={{ padding: '0.25rem', border: 'none' }}
               >
                 <X size={16} />
@@ -689,11 +705,11 @@ const ValidationDashboard = () => {
               <p style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)', marginBottom: '1rem' }}>
                 Veuillez indiquer la raison pour laquelle vous refusez cette demande d'achat. Un message sera envoyé au demandeur.
               </p>
-              
+
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.875rem', fontWeight: 600 }}>Raison du refus</label>
-                <textarea 
-                  className="form-input" 
+                <textarea
+                  className="form-input"
                   style={{ minHeight: '100px', resize: 'vertical', padding: '0.5rem', width: '100%', borderRadius: 'var(--radius-md)', border: '1px solid var(--color-border)' }}
                   placeholder="Ex: Spécifications incorrectes, budget dépassé..."
                   value={refusalReason}
@@ -704,9 +720,9 @@ const ValidationDashboard = () => {
               </div>
 
               <div className="flex justify-end gap-3 mt-6">
-                <button 
-                  type="button" 
-                  className="btn btn-outline" 
+                <button
+                  type="button"
+                  className="btn btn-outline"
                   onClick={() => {
                     setIsRefusalModalOpen(false);
                     setRefusalReason('');
@@ -715,9 +731,9 @@ const ValidationDashboard = () => {
                 >
                   Annuler
                 </button>
-                <button 
-                  type="submit" 
-                  className="btn" 
+                <button
+                  type="submit"
+                  className="btn"
                   style={{ backgroundColor: '#ef4444', color: '#ffffff', borderColor: '#ef4444' }}
                   disabled={refusingId !== null}
                 >
