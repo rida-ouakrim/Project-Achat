@@ -36,6 +36,17 @@ class Profile(models.Model):
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
     validators = models.ManyToManyField(User, blank=True, related_name='supervised_profiles')
 
+    def save(self, *args, **kwargs):
+        if self.company and self.company.upper() == 'SUCCURSALE':
+            self.company = 'Succursale'
+            if not self.city and self.user:
+                haystack = f"{self.user.username or ''} {self.user.email or ''} {self.full_name or ''}".lower()
+                for slug, c_name in [('agadir', 'Agadir'), ('meknes', 'Meknès'), ('meknès', 'Meknès'), ('laayoune', 'Laâyoune'), ('marrakech', 'Marrakech'), ('tanger', 'Tanger'), ('nador', 'Nador'), ('dakhla', 'Dakhla')]:
+                    if slug in haystack:
+                        self.city = c_name
+                        break
+        super().save(*args, **kwargs)
+
     def __str__(self):
         name_str = f"{self.full_name} ({self.user.username})" if self.full_name else self.user.username
         city_str = f" - {self.city}" if self.city else ""
@@ -76,6 +87,8 @@ class PurchaseRequest(models.Model):
     refusal_reason = models.TextField(blank=True, null=True)
 
     def save(self, *args, **kwargs):
+        if self.company and self.company.upper() == 'SUCCURSALE':
+            self.company = 'Succursale'
         if self.requester and hasattr(self.requester, 'profile') and self.requester.profile:
             if self.requester.profile.company and (not self.company or (self.company == 'SEFAMAR' and self.requester.profile.company != 'SEFAMAR')):
                 self.company = self.requester.profile.company
@@ -83,6 +96,18 @@ class PurchaseRequest(models.Model):
                 self.city = self.requester.profile.city
             if not self.department and self.requester.profile.department:
                 self.department = self.requester.profile.department
+        
+        # Détection automatique de la ville si succursale et ville manquante
+        if self.company == 'Succursale' and not self.city and self.requester:
+            haystack = f"{self.requester.username or ''} {self.requester.email or ''}".lower()
+            for slug, c_name in [('agadir', 'Agadir'), ('meknes', 'Meknès'), ('meknès', 'Meknès'), ('laayoune', 'Laâyoune'), ('marrakech', 'Marrakech'), ('tanger', 'Tanger'), ('nador', 'Nador'), ('dakhla', 'Dakhla')]:
+                if slug in haystack:
+                    self.city = c_name
+                    if hasattr(self.requester, 'profile') and not self.requester.profile.city:
+                        self.requester.profile.city = c_name
+                        self.requester.profile.save()
+                    break
+
         if not self.order_number:
             import datetime
             year = datetime.datetime.now().year

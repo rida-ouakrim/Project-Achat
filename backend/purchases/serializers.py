@@ -90,7 +90,7 @@ class PurchaseItemSerializer(serializers.ModelSerializer):
 class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_name = serializers.ReadOnlyField(source='requester.username')
     requester_company = serializers.ReadOnlyField(source='requester.profile.company')
-    requester_city = serializers.ReadOnlyField(source='requester.profile.city')
+    requester_city = serializers.SerializerMethodField()
     requester_department = serializers.ReadOnlyField(source='requester.profile.department')
     validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
@@ -121,6 +121,26 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
                 return ids
         except Exception:
             return []
+
+    def get_requester_city(self, obj):
+        if obj.city:
+            return obj.city
+        if hasattr(obj.requester, 'profile') and obj.requester.profile and obj.requester.profile.city:
+            return obj.requester.profile.city
+        username = (obj.requester.username or '').lower() if obj.requester else ''
+        email = (obj.requester.email or '').lower() if obj.requester else ''
+        haystack = f"{username} {email}"
+        for slug, c_name in [('agadir', 'Agadir'), ('meknes', 'Meknès'), ('meknès', 'Meknès'), ('laayoune', 'Laâyoune'), ('marrakech', 'Marrakech'), ('tanger', 'Tanger'), ('nador', 'Nador'), ('dakhla', 'Dakhla')]:
+            if slug in haystack:
+                return c_name
+        return ''
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        req_city = data.get('requester_city')
+        if not data.get('city') and req_city:
+            data['city'] = req_city
+        return data
 
     def validate_company(self, value):
         if value:

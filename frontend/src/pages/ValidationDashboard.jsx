@@ -1,7 +1,103 @@
 import React, { useState, useEffect } from 'react';
-import { Check, RefreshCw, AlertCircle, FileText, CheckCircle, Eye, X } from 'lucide-react';
+import { Check, RefreshCw, AlertCircle, FileText, CheckCircle, Eye, X, MapPin, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { fetchRequests, validateRequest, updateRequest } from '../api';
+
+const MOROCCAN_CITIES = ['Agadir', 'Meknès', 'Laâyoune', 'Marrakech', 'Tanger', 'Nador', 'Dakhla'];
+
+const getRequestCity = (req) => {
+  if (!req) return '';
+  if (req.city && req.city.trim()) return req.city.trim();
+  if (req.requester_city && req.requester_city.trim()) return req.requester_city.trim();
+  // Détection intelligente dans le nom, l'email ou l'affectation
+  const text = `${req.requester_name || ''} ${req.requester || ''} ${req.assignment || ''}`.toLowerCase();
+  for (const c of MOROCCAN_CITIES) {
+    const slug = c.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (text.includes(slug) || text.includes(c.toLowerCase())) return c;
+  }
+  return '';
+};
+
+const renderCompanyBadge = (req) => {
+  const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
+  const city = getRequestCity(req);
+
+  if (comp === 'SOMABUS') {
+    return (
+      <span style={{
+        backgroundColor: '#fef3c7',
+        color: '#b45309',
+        border: '1px solid #fde68a',
+        padding: '3px 8px',
+        borderRadius: '6px',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        SOMABUS
+      </span>
+    );
+  }
+
+  if (comp === 'CKD') {
+    return (
+      <span style={{
+        backgroundColor: '#dcfce7',
+        color: '#15803d',
+        border: '1px solid #bbf7d0',
+        padding: '3px 8px',
+        borderRadius: '6px',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px'
+      }}>
+        CKD
+      </span>
+    );
+  }
+
+  if (comp === 'SUCCURSALE') {
+    return (
+      <span style={{
+        backgroundColor: '#ccfbf1',
+        color: '#0f766e',
+        border: '1px solid #99f6e4',
+        padding: '3px 9px',
+        borderRadius: '6px',
+        fontSize: '0.75rem',
+        fontWeight: 700,
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '4px',
+        boxShadow: '0 1px 2px rgba(15, 118, 110, 0.08)'
+      }}>
+        <MapPin size={13} />
+        {city ? `Succursale - ${city}` : 'Succursale'}
+      </span>
+    );
+  }
+
+  return (
+    <span style={{
+      backgroundColor: '#e0f2fe',
+      color: '#0369a1',
+      border: '1px solid #bae6fd',
+      padding: '3px 8px',
+      borderRadius: '6px',
+      fontSize: '0.75rem',
+      fontWeight: 700,
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: '4px'
+    }}>
+      SEFAMAR
+    </span>
+  );
+};
 
 const getMediaUrl = (path) => {
   if (!path) return '';
@@ -37,6 +133,7 @@ const ValidationDashboard = () => {
   const userCity = (localStorage.getItem('userCity') || '').trim();
   const isSuperUser = ['rouakrim@sefamar.ma', 'man@sefamar.ma'].includes((userName || '').toLowerCase()) || userRole === 'admin';
   const [companyFilter, setCompanyFilter] = useState('Tous');
+  const [cityFilter, setCityFilter] = useState('Tous');
 
   const getValidationDelay = (dateStr) => {
     if (!dateStr) return null;
@@ -94,7 +191,7 @@ const ValidationDashboard = () => {
 
         // 3. Si Succursale : le validateur d'une succursale ne voit que les demandes de sa propre ville
         if (!isSuperUser && reqCompany === 'SUCCURSALE') {
-          const reqCity = (req.requester_city || req.city || '').trim().toUpperCase();
+          const reqCity = getRequestCity(req).toUpperCase();
           if (userCity && reqCity && reqCity !== userCity.toUpperCase()) {
             return false;
           }
@@ -103,6 +200,14 @@ const ValidationDashboard = () => {
         // Si super-utilisateur avec filtre entreprise actif
         if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) {
           return false;
+        }
+
+        // Si super-utilisateur avec filtre ville actif
+        if (isSuperUser && companyFilter === 'SUCCURSALE' && cityFilter !== 'Tous') {
+          const reqCity = getRequestCity(req).toUpperCase();
+          if (reqCity !== cityFilter.toUpperCase()) {
+            return false;
+          }
         }
 
         return true;
@@ -115,10 +220,14 @@ const ValidationDashboard = () => {
         const reqCompany = (req.requester_company || req.company || 'SEFAMAR').toUpperCase();
         if (!isSuperUser && reqCompany !== userCompany) return false;
         if (!isSuperUser && reqCompany === 'SUCCURSALE') {
-          const reqCity = (req.requester_city || req.city || '').trim().toUpperCase();
+          const reqCity = getRequestCity(req).toUpperCase();
           if (userCity && reqCity && reqCity !== userCity.toUpperCase()) return false;
         }
         if (isSuperUser && companyFilter !== 'Tous' && reqCompany !== companyFilter) return false;
+        if (isSuperUser && companyFilter === 'SUCCURSALE' && cityFilter !== 'Tous') {
+          const reqCity = getRequestCity(req).toUpperCase();
+          if (reqCity !== cityFilter.toUpperCase()) return false;
+        }
         return isSuperUser || req.validated_by === currentUserId || req.validated_by_name === userName;
       });
       setHistoryRequests(historyValidation);
@@ -132,7 +241,7 @@ const ValidationDashboard = () => {
 
   useEffect(() => {
     loadRequests();
-  }, [companyFilter]);
+  }, [companyFilter, cityFilter]);
 
   const handleValidate = async (id) => {
     setValidatingId(id);
@@ -266,19 +375,45 @@ const ValidationDashboard = () => {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
             <h3 style={{ margin: 0 }}>Demandes en attente de validation</h3>
             {isSuperUser && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société :</span>
-                <select
-                  className="form-input"
-                  value={companyFilter}
-                  onChange={(e) => setCompanyFilter(e.target.value)}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
-                >
-                  <option value="Tous">Toutes les Sociétés</option>
-                  <option value="SEFAMAR">SEFAMAR</option>
-                  <option value="SOMABUS">SOMABUS</option>
-                  <option value="CKD">CKD</option>
-                </select>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#475569' }}>Société :</span>
+                  <select
+                    className="form-input"
+                    value={companyFilter}
+                    onChange={(e) => {
+                      setCompanyFilter(e.target.value);
+                      if (e.target.value !== 'SUCCURSALE') setCityFilter('Tous');
+                    }}
+                    style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: 'auto' }}
+                  >
+                    <option value="Tous">Toutes les Sociétés</option>
+                    <option value="SEFAMAR">SEFAMAR</option>
+                    <option value="SOMABUS">SOMABUS</option>
+                    <option value="CKD">CKD</option>
+                    <option value="SUCCURSALE">Succursales (Villes)</option>
+                  </select>
+                </div>
+
+                {companyFilter === 'SUCCURSALE' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#0f766e', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <MapPin size={13} />
+                      Ville :
+                    </span>
+                    <select
+                      className="form-input"
+                      value={cityFilter}
+                      onChange={(e) => setCityFilter(e.target.value)}
+                      style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', width: 'auto', borderColor: '#99f6e4', backgroundColor: '#f0fdfa' }}
+                    >
+                      <option value="Tous">Toutes les Villes</option>
+                      {MOROCCAN_CITIES.map(c => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -301,7 +436,10 @@ const ValidationDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {pendingRequests.map(req => (
+                  {pendingRequests.map(req => {
+                    const reqComp = (req.company || req.requester_company || '').toUpperCase();
+                    const reqCity = getRequestCity(req);
+                    return (
                     <tr key={req.id}>
                       <td style={{ fontWeight: 500 }}>
                         <div>{req.order_number}</div>
@@ -319,22 +457,7 @@ const ValidationDashboard = () => {
                         )}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {(() => {
-                          const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
-                          const city = req.requester_city || req.city || '';
-                          const style = comp === 'SOMABUS'
-                            ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
-                            : comp === 'CKD'
-                              ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
-                              : comp === 'SUCCURSALE'
-                                ? { backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }
-                                : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
-                          return (
-                            <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                              {comp === 'SUCCURSALE' && city ? `Succursale - ${city}` : comp}
-                            </span>
-                          );
-                        })()}
+                        {renderCompanyBadge(req)}
                       </td>
                       <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 500 }}>
@@ -364,7 +487,26 @@ const ValidationDashboard = () => {
                           );
                         })()}
                       </td>
-                      <td style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{req.requester_name}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>
+                        <div style={{ fontWeight: 600 }}>{req.requester_name}</div>
+                        {reqComp === 'SUCCURSALE' && reqCity && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            marginTop: '3px',
+                            fontSize: '0.73rem',
+                            fontWeight: 700,
+                            color: '#0f766e',
+                            backgroundColor: '#ccfbf1',
+                            padding: '1px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            <MapPin size={11} />
+                            <span>Ville : {reqCity}</span>
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
                           {req.items && req.items.map((it, idx) => (
@@ -432,7 +574,8 @@ const ValidationDashboard = () => {
                         </div>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {pendingRequests.length === 0 && (
                     <tr>
                       <td colSpan="7" style={{ textAlign: 'center', padding: '4rem' }}>
@@ -470,7 +613,10 @@ const ValidationDashboard = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {historyRequests.map(req => (
+                  {historyRequests.map(req => {
+                    const reqComp = (req.company || req.requester_company || '').toUpperCase();
+                    const reqCity = getRequestCity(req);
+                    return (
                     <tr key={req.id}>
                       <td style={{ fontWeight: 500 }}>
                         <div>{req.order_number}</div>
@@ -488,22 +634,7 @@ const ValidationDashboard = () => {
                         )}
                       </td>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {(() => {
-                          const comp = (req.company || req.requester_company || 'SEFAMAR').toUpperCase();
-                          const city = req.requester_city || req.city || '';
-                          const style = comp === 'SOMABUS'
-                            ? { backgroundColor: '#fef3c7', color: '#b45309', border: '1px solid #fde68a' }
-                            : comp === 'CKD'
-                              ? { backgroundColor: '#dcfce7', color: '#15803d', border: '1px solid #bbf7d0' }
-                              : comp === 'SUCCURSALE'
-                                ? { backgroundColor: '#ccfbf1', color: '#0f766e', border: '1px solid #99f6e4' }
-                                : { backgroundColor: '#e0f2fe', color: '#0369a1', border: '1px solid #bae6fd' };
-                          return (
-                            <span style={{ ...style, padding: '2px 8px', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700 }}>
-                              {comp === 'SUCCURSALE' && city ? `Succursale - ${city}` : comp}
-                            </span>
-                          );
-                        })()}
+                        {renderCompanyBadge(req)}
                       </td>
                       <td style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap' }}>
                         <div style={{ fontWeight: 500 }}>
@@ -513,7 +644,26 @@ const ValidationDashboard = () => {
                           })() : '-'}
                         </div>
                       </td>
-                      <td style={{ fontSize: '0.8125rem', fontWeight: 600 }}>{req.requester_name}</td>
+                      <td style={{ fontSize: '0.8125rem' }}>
+                        <div style={{ fontWeight: 600 }}>{req.requester_name}</div>
+                        {reqComp === 'SUCCURSALE' && reqCity && (
+                          <div style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '3px',
+                            marginTop: '3px',
+                            fontSize: '0.73rem',
+                            fontWeight: 700,
+                            color: '#0f766e',
+                            backgroundColor: '#ccfbf1',
+                            padding: '1px 6px',
+                            borderRadius: '4px'
+                          }}>
+                            <MapPin size={11} />
+                            <span>Ville : {reqCity}</span>
+                          </div>
+                        )}
+                      </td>
                       <td>
                         <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.875rem' }}>
                           {req.items && req.items.map((it, idx) => (
@@ -544,7 +694,8 @@ const ValidationDashboard = () => {
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {historyRequests.length === 0 && (
                     <tr>
                       <td colSpan="7" style={{ textAlign: 'center', padding: '4rem', color: 'var(--color-text-muted)' }}>
@@ -574,6 +725,12 @@ const ValidationDashboard = () => {
                 <div>
                   <p className="text-xs text-muted">Demandeur</p>
                   <p style={{ fontWeight: 600 }}>{detailsRequest.requester_name}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted">Entreprise / Succursale</p>
+                  <div style={{ marginTop: '0.25rem' }}>
+                    {renderCompanyBadge(detailsRequest)}
+                  </div>
                 </div>
                 <div>
                   <p className="text-xs text-muted">Affectation</p>
