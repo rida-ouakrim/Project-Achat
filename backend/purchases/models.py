@@ -15,6 +15,7 @@ class Profile(models.Model):
         ('SOMABUS', 'SOMABUS'),
         ('CKD', 'CKD'),
         ('Succursale', 'Succursale'),
+        ('SUCCURSALE', 'Succursale'),
     ]
     CITY_CHOICES = [
         ('', 'Non spécifiée / Siège'),
@@ -54,6 +55,7 @@ class PurchaseRequest(models.Model):
         ('SOMABUS', 'SOMABUS'),
         ('CKD', 'CKD'),
         ('Succursale', 'Succursale'),
+        ('SUCCURSALE', 'Succursale'),
     ]
     
     order_number = models.CharField(max_length=50, unique=True, editable=False)

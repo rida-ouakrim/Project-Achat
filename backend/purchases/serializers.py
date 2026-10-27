@@ -119,9 +119,22 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
                 if prof.validator_id and prof.validator_id not in ids:
                     ids.append(prof.validator_id)
                 return ids
-            return []
         except Exception:
             return []
+
+    def validate_company(self, value):
+        if value:
+            val_clean = str(value).strip()
+            if val_clean.upper() in ['SUCCURSALE', 'SUCCURSALES']:
+                return 'Succursale'
+            if val_clean.upper() == 'SEFAMAR':
+                return 'SEFAMAR'
+            if val_clean.upper() == 'SOMABUS':
+                return 'SOMABUS'
+            if val_clean.upper() == 'CKD':
+                return 'CKD'
+            return val_clean
+        return value
 
     def create(self, validated_data):
         items_data = validated_data.pop('items', [])
