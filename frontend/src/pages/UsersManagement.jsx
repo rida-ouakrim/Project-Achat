@@ -388,7 +388,7 @@ const UsersManagement = () => {
   };
 
   return (
-    <div style={{ padding: '1.5rem', maxWidth: '1440px', margin: '0 auto' }}>
+    <div style={{ padding: '0.75rem 0.5rem 1.5rem 0.5rem', width: '100%', margin: '0 auto' }}>
 
       {/* En-tête de la page */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
@@ -573,18 +573,18 @@ const UsersManagement = () => {
             <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem' }}>Essayez d'ajuster votre recherche ou vos filtres.</p>
           </div>
         ) : (
-          <div className="table-responsive">
-            <table className="table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-responsive" style={{ width: '100%', overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', minWidth: '950px' }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>UTILISATEUR (NOM & EMAIL)</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>ENTREPRISE</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>SERVICE / DÉPARTEMENT</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>RÔLE MÉTIER</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>VALIDATEUR / DEMANDEURS</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>DEMANDES</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'left', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>DATE CRÉATION</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center', fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>ACTIONS</th>
+                  <th style={{ padding: '0.75rem 0.65rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em' }}>UTILISATEUR (NOM & EMAIL)</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>ENTREPRISE</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>SERVICE / DÉPARTEMENT</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>RÔLE MÉTIER</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em' }}>VALIDATEUR / DEMANDEURS</th>
+                  <th style={{ padding: '0.75rem 0.4rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>DEMANDES</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'left', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap' }}>DATE CRÉATION</th>
+                  <th style={{ padding: '0.75rem 0.6rem', textAlign: 'center', fontSize: '0.75rem', fontWeight: 700, color: '#475569', letterSpacing: '0.03em', whiteSpace: 'nowrap', width: '160px', minWidth: '160px' }}>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
@@ -603,11 +603,11 @@ const UsersManagement = () => {
                     <tr key={u.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.15s' }}>
 
                       {/* Utilisateur (Nom + Email) */}
-                      <td style={{ padding: '0.9rem 1rem' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <td style={{ padding: '0.75rem 0.65rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
                           <div style={{
-                            width: '38px',
-                            height: '38px',
+                            width: '36px',
+                            height: '36px',
                             borderRadius: '50%',
                             backgroundColor: '#eff6ff',
                             color: '#2563eb',
@@ -615,14 +615,14 @@ const UsersManagement = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 700,
-                            fontSize: '0.9rem',
+                            fontSize: '0.85rem',
                             border: '1px solid #bfdbfe',
                             flexShrink: 0
                           }}>
                             {(fullName || 'U')[0].toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                            <div style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                               {fullName}
                               {u.is_active === false && (
                                 <span style={{ fontSize: '0.7rem', backgroundColor: '#fee2e2', color: '#b91c1c', padding: '1px 6px', borderRadius: '4px', fontWeight: 500 }}>
@@ -640,7 +640,7 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Entreprise */}
-                      <td style={{ padding: '0.9rem 1rem' }}>
+                      <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap' }}>
                         <span style={{
                           ...getCompanyBadgeStyle(company),
                           display: 'inline-flex',
@@ -659,7 +659,7 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Service / Département */}
-                      <td style={{ padding: '0.9rem 1rem' }}>
+                      <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap' }}>
                         {department ? (
                           <span style={{
                             display: 'inline-flex',
@@ -684,7 +684,7 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Rôle */}
-                      <td style={{ padding: '0.9rem 1rem' }}>
+                      <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap' }}>
                         <span style={{
                           ...getRoleBadgeStyle(role),
                           display: 'inline-block',
@@ -698,11 +698,11 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Validateur attitré / Demandeurs supervisés */}
-                      <td style={{ padding: '0.9rem 1rem' }}>
+                      <td style={{ padding: '0.75rem 0.6rem' }}>
                         {role === 'validator' || role === 'director' ? (
                           (u.profile?.assigned_requester_ids && u.profile.assigned_requester_ids.length > 0) ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#15803d', fontSize: '0.82rem', fontWeight: 600 }}>
-                              <UserCheck size={14} style={{ color: '#16a34a' }} />
+                              <UserCheck size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
                               <span>{u.profile.assigned_requester_ids.length} demandeur(s) assigné(s)</span>
                             </div>
                           ) : (
@@ -713,7 +713,7 @@ const UsersManagement = () => {
                         ) : role === 'requester' ? (
                           (u.profile?.validator_ids && u.profile.validator_ids.length > 0) || validatorName ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0f172a', fontSize: '0.85rem', fontWeight: 500 }}>
-                              <UserCheck size={15} style={{ color: '#16a34a' }} />
+                              <UserCheck size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
                               <span>{validatorName || `${u.profile?.validator_ids?.length || 1} validateur(s)`}</span>
                             </div>
                           ) : (
@@ -727,12 +727,12 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Nombre de demandes */}
-                      <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
+                      <td style={{ padding: '0.75rem 0.4rem', textAlign: 'center' }}>
                         <span style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: '0.25rem',
-                          padding: '0.2rem 0.6rem',
+                          padding: '0.2rem 0.55rem',
                           borderRadius: '12px',
                           fontSize: '0.8rem',
                           fontWeight: 600,
@@ -746,20 +746,29 @@ const UsersManagement = () => {
                       </td>
 
                       {/* Date de création */}
-                      <td style={{ padding: '0.9rem 1rem', fontSize: '0.85rem', color: '#64748b' }}>
+                      <td style={{ padding: '0.75rem 0.6rem', fontSize: '0.82rem', color: '#64748b', whiteSpace: 'nowrap' }}>
                         {u.date_joined || '-'}
                       </td>
 
                       {/* Actions */}
-                      <td style={{ padding: '0.9rem 1rem', textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', gap: '0.4rem', alignItems: 'center' }}>
+                      <td style={{ padding: '0.75rem 0.6rem', textAlign: 'center', whiteSpace: 'nowrap', width: '160px', minWidth: '160px' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center', justifyContent: 'center', flexWrap: 'nowrap' }}>
                           <button
                             onClick={() => handleOpenEdit(u)}
                             className="btn btn-outline"
-                            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            style={{
+                              padding: '0.32rem 0.6rem',
+                              fontSize: '0.75rem',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.25rem',
+                              whiteSpace: 'nowrap',
+                              fontWeight: 600,
+                              borderRadius: '6px'
+                            }}
                             title="Modifier l'utilisateur"
                           >
-                            <Edit3 size={14} />
+                            <Edit3 size={13} />
                             Modifier
                           </button>
 
@@ -770,7 +779,16 @@ const UsersManagement = () => {
                               setIsPassModalOpen(true);
                             }}
                             className="btn btn-outline"
-                            style={{ padding: '0.3rem 0.5rem', color: '#d97706', borderColor: '#fde68a' }}
+                            style={{
+                              padding: '0.32rem 0.5rem',
+                              color: '#d97706',
+                              borderColor: '#fde68a',
+                              backgroundColor: '#fffbeb',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              borderRadius: '6px'
+                            }}
                             title="Réinitialiser le mot de passe"
                           >
                             <Key size={14} />
@@ -780,7 +798,16 @@ const UsersManagement = () => {
                             <button
                               onClick={() => setUserToDelete(u)}
                               className="btn btn-outline"
-                              style={{ padding: '0.3rem 0.5rem', color: '#dc2626', borderColor: '#fecaca' }}
+                              style={{
+                                padding: '0.32rem 0.5rem',
+                                color: '#dc2626',
+                                borderColor: '#fecaca',
+                                backgroundColor: '#fef2f2',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                borderRadius: '6px'
+                              }}
                               title="Supprimer l'utilisateur"
                             >
                               <Trash2 size={14} />

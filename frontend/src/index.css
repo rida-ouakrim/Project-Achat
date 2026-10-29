@@ -202,8 +202,14 @@ p { color: var(--color-text-muted); font-weight: 500; }
 }
 
 /* Tables */
-.table-container {
+.table-container,
+.table-responsive {
+  width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-container {
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
 }
