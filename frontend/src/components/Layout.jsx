@@ -17,18 +17,22 @@ const Layout = () => {
   // Restriction des routes par rôle (RBAC)
   const path = location.pathname.replace('/', '');
   
-  const allPaths = ['admin-dashboard', 'users', 'director', 'purchasing', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'];
+  const allPaths = ['admin-dashboard', 'users', 'users-directory', 'director', 'purchasing', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'];
+
+  const isDAF = userName === 'g.benelhassane@sefamar.ma';
 
   const roleRouteMap = {
     admin: allPaths,
-    director: ['director', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'],
+    director: ['director', 'users-directory', 'requester', 'validation', 'suppliers', 'sourcing', 'compare-quotes'],
     purchasing: ['purchasing', 'suppliers', 'sourcing', 'compare-quotes'],
-    requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'man@sefamar.ma'].includes(userName) ? ['requester', 'validation'] : ['requester'],
-    validator: ['validation'],
+    requester: ['chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'man@sefamar.ma'].includes(userName)
+      ? ['director', 'users-directory', 'validation', 'requester']
+      : ['requester'],
+    validator: isDAF ? ['director', 'users-directory', 'validation'] : ['validation'],
     ai_tools: ['sourcing', 'compare-quotes']
   };
 
-  const allowedPaths = isAdmin ? allPaths : (roleRouteMap[userRole] || ['sourcing']);
+  const allowedPaths = isAdmin ? allPaths : (isDAF ? ['director', 'users-directory', 'validation'] : (roleRouteMap[userRole] || ['sourcing']));
   if (path && !allowedPaths.includes(path)) {
     return <Navigate to={allowedPaths[0] ? `/${allowedPaths[0]}` : '/sourcing'} replace />;
   }

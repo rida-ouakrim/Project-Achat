@@ -49,10 +49,17 @@ const Sidebar = () => {
           </NavLink>
         )}
 
-        {(isAdmin || userRole === 'director') && (
+        {(isAdmin || userRole === 'director' || userName === 'g.benelhassane@sefamar.ma') && (
           <NavLink to="/director" className={({ isActive }) => `sidebar-link ${isActive ? 'active-directeur' : ''}`}>
             <BarChart3 size={18} />
             Tableau de bord
+          </NavLink>
+        )}
+
+        {(isAdmin || userRole === 'director' || userName === 'g.benelhassane@sefamar.ma') && (
+          <NavLink to="/users-directory" className={({ isActive }) => `sidebar-link ${isActive ? 'active-directeur' : ''}`}>
+            <Users size={18} />
+            Utilisateurs & Validateurs
           </NavLink>
         )}
 
