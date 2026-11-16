@@ -279,6 +279,7 @@ const RequesterDashboard = () => {
       const userComp = localStorage.getItem('userCompany') || '';
       const userCity = localStorage.getItem('userCity') || '';
       const userDept = localStorage.getItem('userDepartment') || '';
+      let lastCreated = null;
 
       if (requestFiles.length > 0) {
         const payload = new FormData();
@@ -296,7 +297,8 @@ const RequesterDashboard = () => {
         requestFiles.forEach(file => {
           payload.append('request_pdf', file);
         });
-        await createRequest(payload);
+        const createdRes = await createRequest(payload);
+        lastCreated = createdRes?.data;
       } else {
         const payload = {
           requester: currentUserId,
@@ -311,7 +313,8 @@ const RequesterDashboard = () => {
             qty: parseInt(item.qty)
           }))
         };
-        await createRequest(payload);
+        const createdRes = await createRequest(payload);
+        lastCreated = createdRes?.data;
       }
 
       setFormData({ assignment: '', observation: '' });
@@ -322,9 +325,11 @@ const RequesterDashboard = () => {
       await loadRequests();
       await loadSuggestions();
       toast.success(
-        isAccountingUser
-          ? 'Votre demande avec feuille signée a été transmise directement aux Achats !'
-          : 'Votre demande a été créée et transmise avec succès !'
+        lastCreated?.is_validated
+          ? `Votre demande ${lastCreated.order_number || ''} a été validée automatiquement sous votre nom et transmise aux Achats !`
+          : isAccountingUser
+            ? 'Votre demande avec feuille signée a été transmise directement aux Achats !'
+            : 'Votre demande a été créée et transmise avec succès !'
       );
     } catch (err) {
       console.error("Erreur lors de la création de la demande :", err);

@@ -441,16 +441,32 @@ const UsersDirectory = () => {
 
                       {/* Rôle */}
                       <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          ...getRoleBadgeStyle(role),
-                          display: 'inline-block',
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600
-                        }}>
-                          {getRoleLabel(role)}
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <span style={{
+                            ...getRoleBadgeStyle(role),
+                            display: 'inline-block',
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
+                          }}>
+                            {getRoleLabel(role)}
+                          </span>
+                          {role === 'requester' && u.profile?.auto_validate && (
+                            <span style={{
+                              display: 'inline-block',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '4px',
+                              backgroundColor: '#ede9fe',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe'
+                            }}>
+                              ⚡ Auto-validateur
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Validateur attitré / Demandeurs supervisés */}
@@ -467,7 +483,23 @@ const UsersDirectory = () => {
                             </span>
                           )
                         ) : role === 'requester' ? (
-                          (u.profile?.validator_ids && u.profile.validator_ids.length > 0) || validatorName ? (
+                          u.profile?.auto_validate ? (
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.25rem 0.6rem',
+                              backgroundColor: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600
+                            }}>
+                              <CheckCircle2 size={13} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                              <span>Auto-validation (par son nom)</span>
+                            </div>
+                          ) : (u.profile?.validator_ids && u.profile.validator_ids.length > 0) || validatorName ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0f172a', fontSize: '0.85rem', fontWeight: 500 }}>
                               <UserCheck size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
                               <span>{validatorName || `${u.profile?.validator_ids?.length || 1} validateur(s)`}</span>

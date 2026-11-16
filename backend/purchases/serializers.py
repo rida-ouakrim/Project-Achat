@@ -10,13 +10,15 @@ class ProfileSerializer(serializers.ModelSerializer):
     validator_ids = serializers.SerializerMethodField()
     assigned_requester_ids = serializers.SerializerMethodField()
     assigned_requesters = serializers.SerializerMethodField()
+    auto_validate = serializers.BooleanField(required=False)
 
     class Meta:
         model = Profile
         fields = [
             'role', 'company', 'city', 'department', 'full_name', 
             'validator', 'validator_id', 'validator_name',
-            'validator_ids', 'assigned_requester_ids', 'assigned_requesters'
+            'validator_ids', 'assigned_requester_ids', 'assigned_requesters',
+            'auto_validate'
         ]
 
     def get_validator_ids(self, obj):
@@ -92,7 +94,8 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
     requester_company = serializers.ReadOnlyField(source='requester.profile.company')
     requester_city = serializers.SerializerMethodField()
     requester_department = serializers.ReadOnlyField(source='requester.profile.department')
-    validated_by_name = serializers.ReadOnlyField(source='validated_by.username')
+    validated_by_username = serializers.ReadOnlyField(source='validated_by.username')
+    validated_by_name = serializers.SerializerMethodField()
     assigned_validator_id = serializers.ReadOnlyField(source='requester.profile.validator_id')
     assigned_validator_name = serializers.ReadOnlyField(source='requester.profile.validator.username')
     assigned_validator_ids = serializers.SerializerMethodField()
@@ -106,10 +109,29 @@ class PurchaseRequestSerializer(serializers.ModelSerializer):
             'department', 'requester_department',
             'assignment', 'observation', 
             'date_created', 'status', 'receipt_pdf', 'request_pdf', 'refusal_reason', 'items',
-            'is_validated', 'validated_by', 'validated_by_name',
+            'is_validated', 'validated_by', 'validated_by_name', 'validated_by_username',
             'assigned_validator_id', 'assigned_validator_name', 'assigned_validator_ids'
         ]
         read_only_fields = ['order_number', 'date_created']
+
+    def get_validated_by_name(self, obj):
+        if not obj.validated_by:
+            return None
+        prof = getattr(obj.validated_by, 'profile', None)
+        if prof and prof.full_name:
+            return prof.full_name
+        full_name = f"{obj.validated_by.first_name} {obj.validated_by.last_name}".strip()
+        if full_name:
+            return full_name
+        if obj.validated_by.username == "man@sefamar.ma":
+            return "Mme EL MANSOURI"
+        elif obj.validated_by.username == "chadi@sefamar.ma":
+            return "Chadi Ismail"
+        elif obj.validated_by.username == "obelkadi.man@sefamar.ma":
+            return "O. BELKADI (Commercial)"
+        elif obj.validated_by.username == "g.benelhassane@sefamar.ma":
+            return "Mme BENELHASSANE"
+        return obj.validated_by.username
 
     def get_assigned_validator_ids(self, obj):
         try:

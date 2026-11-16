@@ -88,6 +88,7 @@ const UsersManagement = () => {
     city: '',
     departmentSelect: '',
     departmentCustom: '',
+    auto_validate: false,
     validator_ids: [],
     assigned_requester_ids: []
   });
@@ -104,6 +105,7 @@ const UsersManagement = () => {
     city: '',
     departmentSelect: '',
     departmentCustom: '',
+    auto_validate: false,
     validator_ids: [],
     assigned_requester_ids: [],
     password: '',
@@ -230,6 +232,7 @@ const UsersManagement = () => {
 
     setCreating(true);
     try {
+      const isAutoValidate = createForm.role === 'requester' ? !!createForm.auto_validate : false;
       const payload = {
         name: createForm.name.trim(),
         full_name: createForm.name.trim(),
@@ -240,8 +243,9 @@ const UsersManagement = () => {
         company: createForm.company,
         city: createForm.company === 'Succursale' ? createForm.city : '',
         department: finalDept,
-        validator_ids: createForm.role === 'requester' ? createForm.validator_ids : [],
-        validator_id: createForm.role === 'requester' && createForm.validator_ids.length > 0 ? createForm.validator_ids[0] : null,
+        auto_validate: isAutoValidate,
+        validator_ids: createForm.role === 'requester' && !isAutoValidate ? createForm.validator_ids : [],
+        validator_id: createForm.role === 'requester' && !isAutoValidate && createForm.validator_ids.length > 0 ? createForm.validator_ids[0] : null,
         assigned_requester_ids: ['validator', 'director'].includes(createForm.role) ? createForm.assigned_requester_ids : []
       };
       await createUser(payload);
@@ -256,6 +260,7 @@ const UsersManagement = () => {
         city: '',
         departmentSelect: '',
         departmentCustom: '',
+        auto_validate: false,
         validator_ids: [],
         assigned_requester_ids: []
       });
@@ -289,6 +294,7 @@ const UsersManagement = () => {
       city: user.profile?.city || '',
       departmentSelect: isStandard ? userDept : (userDept ? 'custom' : ''),
       departmentCustom: isStandard ? '' : userDept,
+      auto_validate: !!user.profile?.auto_validate,
       validator_ids: initialValIds,
       assigned_requester_ids: initialReqIds,
       password: '',
@@ -320,6 +326,7 @@ const UsersManagement = () => {
 
     setUpdating(true);
     try {
+      const isAutoValidate = editForm.role === 'requester' ? !!editForm.auto_validate : false;
       const payload = {
         name: editForm.name.trim(),
         full_name: editForm.name.trim(),
@@ -329,8 +336,9 @@ const UsersManagement = () => {
         company: editForm.company,
         city: editForm.company === 'Succursale' ? editForm.city : '',
         department: finalDept,
-        validator_ids: editForm.role === 'requester' ? editForm.validator_ids : [],
-        validator_id: editForm.role === 'requester' && editForm.validator_ids.length > 0 ? editForm.validator_ids[0] : null,
+        auto_validate: isAutoValidate,
+        validator_ids: editForm.role === 'requester' && !isAutoValidate ? editForm.validator_ids : [],
+        validator_id: editForm.role === 'requester' && !isAutoValidate && editForm.validator_ids.length > 0 ? editForm.validator_ids[0] : null,
         assigned_requester_ids: ['validator', 'director'].includes(editForm.role) ? editForm.assigned_requester_ids : [],
         is_active: editForm.is_active
       };
@@ -685,16 +693,32 @@ const UsersManagement = () => {
 
                       {/* Rôle */}
                       <td style={{ padding: '0.75rem 0.6rem', whiteSpace: 'nowrap' }}>
-                        <span style={{
-                          ...getRoleBadgeStyle(role),
-                          display: 'inline-block',
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '6px',
-                          fontSize: '0.8rem',
-                          fontWeight: 600
-                        }}>
-                          {getRoleLabel(role)}
-                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexWrap: 'wrap' }}>
+                          <span style={{
+                            ...getRoleBadgeStyle(role),
+                            display: 'inline-block',
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '6px',
+                            fontSize: '0.8rem',
+                            fontWeight: 600
+                          }}>
+                            {getRoleLabel(role)}
+                          </span>
+                          {role === 'requester' && u.profile?.auto_validate && (
+                            <span style={{
+                              display: 'inline-block',
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '0.12rem 0.45rem',
+                              borderRadius: '4px',
+                              backgroundColor: '#ede9fe',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe'
+                            }}>
+                              ⚡ Auto-validateur
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       {/* Validateur attitré / Demandeurs supervisés */}
@@ -711,7 +735,23 @@ const UsersManagement = () => {
                             </span>
                           )
                         ) : role === 'requester' ? (
-                          (u.profile?.validator_ids && u.profile.validator_ids.length > 0) || validatorName ? (
+                          u.profile?.auto_validate ? (
+                            <div style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '0.35rem',
+                              padding: '0.25rem 0.6rem',
+                              backgroundColor: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                              borderRadius: '6px',
+                              fontSize: '0.78rem',
+                              fontWeight: 600
+                            }}>
+                              <CheckCircle2 size={13} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                              <span>Auto-validation (par son nom)</span>
+                            </div>
+                          ) : (u.profile?.validator_ids && u.profile.validator_ids.length > 0) || validatorName ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#0f172a', fontSize: '0.85rem', fontWeight: 500 }}>
                               <UserCheck size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
                               <span>{validatorName || `${u.profile?.validator_ids?.length || 1} validateur(s)`}</span>
@@ -1148,84 +1188,166 @@ const UsersManagement = () => {
                     </div>
                   </div>
                 ) : createForm.role === 'requester' ? (
-                  /* Choix des Validateurs pour ce Demandeur */
+                  /* Choix Validation pour ce Demandeur */
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
-                        <UserCheck size={16} />
-                        Validateur(s) Attitré(s) (Choix de 1 ou plusieurs)
-                      </label>
-                      <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
-                        {createForm.validator_ids.length} sélectionné(s)
-                      </span>
-                    </div>
-
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
-                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de <strong>{createForm.company === 'Succursale' && createForm.city ? `la Succursale ${createForm.city}` : createForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
-                    </p>
-
+                    {/* Option Auto-validation par son nom */}
                     <div style={{
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      padding: '0.5rem',
-                      backgroundColor: '#f8fafc',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem'
+                      backgroundColor: createForm.auto_validate ? '#f5f3ff' : '#ffffff',
+                      border: createForm.auto_validate ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '0.85rem',
+                      boxShadow: createForm.auto_validate ? '0 2px 8px rgba(124, 58, 237, 0.12)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}>
-                      {potentialValidators.map(val => {
-                        const isChecked = createForm.validator_ids.includes(val.id);
-                        const valName = val.profile?.full_name || val.display_name || val.username;
-                        const valEmail = val.email || val.username;
-                        const valComp = val.profile?.company || 'SEFAMAR';
-                        const valCity = val.profile?.city || '';
-
-                        return (
-                          <label
-                            key={val.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '0.6rem',
-                              padding: '0.35rem 0.5rem',
-                              backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
-                              border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              fontSize: '0.82rem'
-                            }}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setCreateForm({ ...createForm, validator_ids: [...createForm.validator_ids, val.id] });
-                                } else {
-                                  setCreateForm({ ...createForm, validator_ids: createForm.validator_ids.filter(id => id !== val.id) });
-                                }
-                              }}
-                              style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                            />
-                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div>
-                                <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
-                                <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
-                              </div>
-                              <span style={{
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
-                              }}>
-                                {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
-                              </span>
-                            </div>
-                          </label>
-                        );
-                      })}
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={createForm.auto_validate}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setCreateForm({
+                              ...createForm,
+                              auto_validate: checked,
+                              validator_ids: checked ? [] : createForm.validator_ids
+                            });
+                          }}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            marginTop: '2px',
+                            accentColor: '#7c3aed',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: createForm.auto_validate ? '#5b21b6' : '#1e293b' }}>
+                              ⚡ Auto-validation par son nom (Pas besoin de validateur)
+                            </span>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '0.12rem 0.5rem',
+                              borderRadius: '9999px',
+                              backgroundColor: createForm.auto_validate ? '#ede9fe' : '#f1f5f9',
+                              color: createForm.auto_validate ? '#6d28d9' : '#64748b'
+                            }}>
+                              {createForm.auto_validate ? 'ACTIVÉE' : 'DÉSACTIVÉE'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '0.78rem', color: createForm.auto_validate ? '#6d28d9' : '#64748b', margin: '0.3rem 0 0 0', lineHeight: 1.35 }}>
+                            {createForm.auto_validate ? (
+                              <>
+                                Les demandes créées par <strong>{createForm.name || 'ce demandeur'}</strong> seront <strong>automatiquement validées sous son propre nom</strong> dès l'enregistrement et transmises directement aux Achats (aucune approbation de validateur requise).
+                              </>
+                            ) : (
+                              <>
+                                Cochez cette case si ce demandeur valide ses demandes lui-même : la validation sera automatique sous son nom sans nécessiter de validateur.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </label>
                     </div>
+
+                    {createForm.auto_validate ? (
+                      <div style={{
+                        padding: '0.75rem 0.9rem',
+                        backgroundColor: '#f5f3ff',
+                        border: '1px dashed #c4b5fd',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        color: '#5b21b6',
+                        fontSize: '0.82rem'
+                      }}>
+                        <CheckCircle2 size={18} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                        <div>
+                          <strong>Validation autonome activée :</strong> Pas besoin d'assigner un validateur. Toutes les demandes seront enregistrées directement comme validées par <strong>{createForm.name || 'ce demandeur'}</strong>.
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                          <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
+                            <UserCheck size={16} />
+                            Validateur(s) Attitré(s) (Choix de 1 ou plusieurs)
+                          </label>
+                          <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                            {createForm.validator_ids.length} sélectionné(s)
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
+                          Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de <strong>{createForm.company === 'Succursale' && createForm.city ? `la Succursale ${createForm.city}` : createForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
+                        </p>
+
+                        <div style={{
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '0.5rem',
+                          backgroundColor: '#f8fafc',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.35rem'
+                        }}>
+                          {potentialValidators.map(val => {
+                            const isChecked = createForm.validator_ids.includes(val.id);
+                            const valName = val.profile?.full_name || val.display_name || val.username;
+                            const valEmail = val.email || val.username;
+                            const valComp = val.profile?.company || 'SEFAMAR';
+                            const valCity = val.profile?.city || '';
+
+                            return (
+                              <label
+                                key={val.id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '0.6rem',
+                                  padding: '0.35rem 0.5rem',
+                                  backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                                  border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.82rem'
+                                }}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isChecked}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCreateForm({ ...createForm, validator_ids: [...createForm.validator_ids, val.id] });
+                                    } else {
+                                      setCreateForm({ ...createForm, validator_ids: createForm.validator_ids.filter(id => id !== val.id) });
+                                    }
+                                  }}
+                                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                />
+                                <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <div>
+                                    <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
+                                    <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
+                                  </div>
+                                  <span style={{
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                                  }}>
+                                    {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
+                                  </span>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : null}
 
@@ -1563,86 +1685,168 @@ const UsersManagement = () => {
                     </div>
                   </div>
                 ) : editForm.role === 'requester' ? (
-                  /* Choix des Validateurs pour ce Demandeur (Choix multiple) */
+                  /* Choix Validation pour ce Demandeur (Auto-validation ou Validateur(s) attitré(s)) */
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                      <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
-                        <UserCheck size={16} />
-                        Validateur(s) Attitré(s) (Choix de 1 ou plusieurs)
-                      </label>
-                      <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
-                        {editForm.validator_ids.length} sélectionné(s)
-                      </span>
-                    </div>
-
-                    <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
-                      Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de la société <strong>{editForm.company === 'Succursale' && editForm.city ? `la Succursale ${editForm.city}` : editForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
-                    </p>
-
+                    {/* Option Auto-validation par son nom */}
                     <div style={{
-                      maxHeight: '150px',
-                      overflowY: 'auto',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '8px',
-                      padding: '0.5rem',
-                      backgroundColor: '#f8fafc',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '0.35rem'
+                      backgroundColor: editForm.auto_validate ? '#f5f3ff' : '#ffffff',
+                      border: editForm.auto_validate ? '2px solid #7c3aed' : '1px solid #cbd5e1',
+                      borderRadius: '10px',
+                      padding: '0.85rem 1rem',
+                      marginBottom: '0.85rem',
+                      boxShadow: editForm.auto_validate ? '0 2px 8px rgba(124, 58, 237, 0.12)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}>
-                      {potentialValidators
-                        .filter(v => v.id !== editForm.id)
-                        .map(val => {
-                          const isChecked = editForm.validator_ids.includes(val.id);
-                          const valName = val.profile?.full_name || val.display_name || val.username;
-                          const valEmail = val.email || val.username;
-                          const valComp = val.profile?.company || 'SEFAMAR';
-                          const valCity = val.profile?.city || '';
-
-                          return (
-                            <label
-                              key={val.id}
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.6rem',
-                                padding: '0.35rem 0.5rem',
-                                backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
-                                border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                fontSize: '0.82rem'
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={(e) => {
-                                  if (e.target.checked) {
-                                    setEditForm({ ...editForm, validator_ids: [...editForm.validator_ids, val.id] });
-                                  } else {
-                                    setEditForm({ ...editForm, validator_ids: editForm.validator_ids.filter(id => id !== val.id) });
-                                  }
-                                }}
-                                style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                              />
-                              <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                  <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
-                                  <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
-                                </div>
-                                <span style={{
-                                  fontSize: '0.7rem',
-                                  fontWeight: 600,
-                                  color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
-                                }}>
-                                  {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
-                                </span>
-                              </div>
-                            </label>
-                          );
-                        })}
+                      <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', cursor: 'pointer', margin: 0 }}>
+                        <input
+                          type="checkbox"
+                          checked={editForm.auto_validate}
+                          onChange={(e) => {
+                            const checked = e.target.checked;
+                            setEditForm({
+                              ...editForm,
+                              auto_validate: checked,
+                              validator_ids: checked ? [] : editForm.validator_ids
+                            });
+                          }}
+                          style={{
+                            width: '18px',
+                            height: '18px',
+                            marginTop: '2px',
+                            accentColor: '#7c3aed',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                            <span style={{ fontWeight: 700, fontSize: '0.88rem', color: editForm.auto_validate ? '#5b21b6' : '#1e293b' }}>
+                              ⚡ Auto-validation par son nom (Pas besoin de validateur)
+                            </span>
+                            <span style={{
+                              fontSize: '0.68rem',
+                              fontWeight: 700,
+                              padding: '0.12rem 0.5rem',
+                              borderRadius: '9999px',
+                              backgroundColor: editForm.auto_validate ? '#ede9fe' : '#f1f5f9',
+                              color: editForm.auto_validate ? '#6d28d9' : '#64748b'
+                            }}>
+                              {editForm.auto_validate ? 'ACTIVÉE' : 'DÉSACTIVÉE'}
+                            </span>
+                          </div>
+                          <p style={{ fontSize: '0.78rem', color: editForm.auto_validate ? '#6d28d9' : '#64748b', margin: '0.3rem 0 0 0', lineHeight: 1.35 }}>
+                            {editForm.auto_validate ? (
+                              <>
+                                Les demandes créées par <strong>{editForm.name || 'ce demandeur'}</strong> seront <strong>automatiquement validées sous son propre nom</strong> dès l'enregistrement et transmises directement aux Achats (aucune approbation de validateur requise).
+                              </>
+                            ) : (
+                              <>
+                                Cochez cette case si ce demandeur valide ses demandes lui-même : la validation sera automatique sous son nom sans nécessiter de validateur.
+                              </>
+                            )}
+                          </p>
+                        </div>
+                      </label>
                     </div>
+
+                    {editForm.auto_validate ? (
+                      <div style={{
+                        padding: '0.75rem 0.9rem',
+                        backgroundColor: '#f5f3ff',
+                        border: '1px dashed #c4b5fd',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '0.6rem',
+                        color: '#5b21b6',
+                        fontSize: '0.82rem'
+                      }}>
+                        <CheckCircle2 size={18} style={{ color: '#7c3aed', flexShrink: 0 }} />
+                        <div>
+                          <strong>Validation autonome activée :</strong> Pas besoin d'assigner un validateur. Toutes les demandes seront enregistrées directement comme validées par <strong>{editForm.name || 'ce demandeur'}</strong>.
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                          <label className="form-label" style={{ fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem', margin: 0 }}>
+                            <UserCheck size={16} />
+                            Validateur(s) Attitré(s) (Choix de 1 ou plusieurs)
+                          </label>
+                          <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 600 }}>
+                            {editForm.validator_ids.length} sélectionné(s)
+                          </span>
+                        </div>
+
+                        <p style={{ fontSize: '0.75rem', color: '#64748b', margin: '0 0 0.5rem 0' }}>
+                          Par défaut, sans sélection, les demandes sont transmises à tous les validateurs de la société <strong>{editForm.company === 'Succursale' && editForm.city ? `la Succursale ${editForm.city}` : editForm.company}</strong>. Cochez un ou plusieurs validateurs attitrés :
+                        </p>
+
+                        <div style={{
+                          maxHeight: '150px',
+                          overflowY: 'auto',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          padding: '0.5rem',
+                          backgroundColor: '#f8fafc',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.35rem'
+                        }}>
+                          {potentialValidators
+                            .filter(v => v.id !== editForm.id)
+                            .map(val => {
+                              const isChecked = editForm.validator_ids.includes(val.id);
+                              const valName = val.profile?.full_name || val.display_name || val.username;
+                              const valEmail = val.email || val.username;
+                              const valComp = val.profile?.company || 'SEFAMAR';
+                              const valCity = val.profile?.city || '';
+
+                              return (
+                                <label
+                                  key={val.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.6rem',
+                                    padding: '0.35rem 0.5rem',
+                                    backgroundColor: isChecked ? '#eff6ff' : '#ffffff',
+                                    border: isChecked ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                    fontSize: '0.82rem'
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={isChecked}
+                                    onChange={(e) => {
+                                      if (e.target.checked) {
+                                        setEditForm({ ...editForm, validator_ids: [...editForm.validator_ids, val.id] });
+                                      } else {
+                                        setEditForm({ ...editForm, validator_ids: editForm.validator_ids.filter(id => id !== val.id) });
+                                      }
+                                    }}
+                                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                                  />
+                                  <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                      <span style={{ fontWeight: 600, color: '#0f172a' }}>{valName}</span>
+                                      <span style={{ color: '#64748b', fontSize: '0.75rem', marginLeft: '0.35rem' }}>({valEmail})</span>
+                                    </div>
+                                    <span style={{
+                                      fontSize: '0.7rem',
+                                      fontWeight: 600,
+                                      color: valComp === 'SOMABUS' ? '#b45309' : valComp === 'CKD' ? '#15803d' : valComp === 'SUCCURSALE' ? '#0f766e' : '#0369a1'
+                                    }}>
+                                      {valComp === 'SUCCURSALE' && valCity ? `Succursale - ${valCity}` : valComp}
+                                    </span>
+                                  </div>
+                                </label>
+                              );
+                            })}
+                        </div>
+                      </>
+                    )}
                   </div>
                 ) : null}
 

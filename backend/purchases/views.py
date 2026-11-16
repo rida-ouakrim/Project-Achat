@@ -26,6 +26,9 @@ class UserViewSet(viewsets.ModelViewSet):
         validator_id = request.data.get('validator_id')
         validator_ids = request.data.get('validator_ids') or []
         assigned_requester_ids = request.data.get('assigned_requester_ids') or []
+        auto_validate = request.data.get('auto_validate', False)
+        if isinstance(auto_validate, str):
+            auto_validate = auto_validate.lower() in ['true', '1', 'yes']
 
         # Si username non fourni mais email fourni, username devient l'email
         if not username and email:
@@ -63,16 +66,20 @@ class UserViewSet(viewsets.ModelViewSet):
             city=city,
             department=department, 
             full_name=full_name,
-            validator=val_obj
+            validator=val_obj if not auto_validate else None,
+            auto_validate=bool(auto_validate)
         )
 
-        if validator_ids:
-            profile.validators.set(validator_ids)
-            if not val_obj:
-                profile.validator_id = validator_ids[0]
-                profile.save()
-        elif val_obj:
-            profile.validators.add(val_obj)
+        if not auto_validate:
+            if validator_ids:
+                profile.validators.set(validator_ids)
+                if not val_obj:
+                    profile.validator_id = validator_ids[0]
+                    profile.save()
+            elif val_obj:
+                profile.validators.add(val_obj)
+        else:
+            profile.validators.clear()
 
         if assigned_requester_ids:
             for req_id in assigned_requester_ids:
@@ -99,6 +106,7 @@ class UserViewSet(viewsets.ModelViewSet):
         validator_id = request.data.get('validator_id')
         validator_ids = request.data.get('validator_ids')
         assigned_requester_ids = request.data.get('assigned_requester_ids')
+        auto_validate = request.data.get('auto_validate')
         password = request.data.get('password')
         is_active = request.data.get('is_active')
 
@@ -140,23 +148,33 @@ class UserViewSet(viewsets.ModelViewSet):
         if department is not None:
             profile.department = str(department).strip()
 
+        if auto_validate is not None:
+            if isinstance(auto_validate, str):
+                auto_validate = auto_validate.lower() in ['true', '1', 'yes']
+            profile.auto_validate = bool(auto_validate)
+
         # Gestion des validateurs assignés à ce demandeur
-        if validator_ids is not None:
-            profile.validators.set(validator_ids)
-            if validator_ids:
-                profile.validator_id = validator_ids[0]
-            else:
-                profile.validator = None
+        if profile.auto_validate:
+            profile.validator = None
+            profile.validators.clear()
             profile.save()
-        elif 'validator_id' in request.data:
-            if validator_id:
-                val_user = User.objects.filter(id=validator_id).first()
-                profile.validator = val_user
-                profile.validators.set([val_user] if val_user else [])
-            else:
-                profile.validator = None
-                profile.validators.clear()
-            profile.save()
+        else:
+            if validator_ids is not None:
+                profile.validators.set(validator_ids)
+                if validator_ids:
+                    profile.validator_id = validator_ids[0]
+                else:
+                    profile.validator = None
+                profile.save()
+            elif 'validator_id' in request.data:
+                if validator_id:
+                    val_user = User.objects.filter(id=validator_id).first()
+                    profile.validator = val_user
+                    profile.validators.set([val_user] if val_user else [])
+                else:
+                    profile.validator = None
+                    profile.validators.clear()
+                profile.save()
 
         # Si ce compte est un validateur et qu'on configure les demandeurs qu'il supervise
         if assigned_requester_ids is not None:
@@ -198,7 +216,16 @@ class UserViewSet(viewsets.ModelViewSet):
         if department is not None:
             profile.department = department.strip()
         
-        if 'validator_id' in request.data:
+        if 'auto_validate' in request.data:
+            auto_validate = request.data.get('auto_validate')
+            if isinstance(auto_validate, str):
+                auto_validate = auto_validate.lower() in ['true', '1', 'yes']
+            profile.auto_validate = bool(auto_validate)
+            if profile.auto_validate:
+                profile.validator = None
+                profile.validators.clear()
+
+        if not profile.auto_validate and 'validator_id' in request.data:
             validator_id = request.data.get('validator_id')
             if validator_id:
                 val_user = User.objects.filter(id=validator_id).first()
@@ -353,8 +380,9 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             print("Erreurs validation création demande:", serializer.errors)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        out_serializer = self.get_serializer(serializer.instance)
+        headers = self.get_success_headers(out_serializer.data)
+        return Response(out_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         requester = serializer.validated_data.get('requester')
@@ -372,6 +400,12 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
             instance.requester.username == 'comptabilite@sefamar.ma' or 
             'compta' in instance.requester.username.lower()
         )
+        # 2. Vérifier si le demandeur a l'auto-validation activée ou est dans les comptes historiques
+        is_auto_validated = (
+            (hasattr(instance.requester, 'profile') and instance.requester.profile and instance.requester.profile.auto_validate) or
+            instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'obelkadi.man@sefamar.ma']
+        )
+
         if is_accounting:
             # Ne pas notifier les validateurs électroniques : validation déjà faite sur feuille papier
             purchasing_users = User.objects.filter(profile__role='purchasing')
@@ -380,23 +414,35 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
                     user=p_user,
                     message=f"Nouvelle demande {instance.order_number} de la Comptabilité (validée sur feuille papier) prête pour achat."
                 )
-        # 2. Check if the requester is a validator or commercial (auto-validation)
-        elif instance.requester.username in ['man@sefamar.ma', 'chadi@sefamar.ma', 'g.benelhassane@sefamar.ma', 'obelkadi.man@sefamar.ma']:
+        elif is_auto_validated:
             instance.is_validated = True
             instance.validated_by = instance.requester
             instance.save()
             
-            # Display name logic
-            if instance.requester.username == "man@sefamar.ma":
+            # Nom complet / affichage du validateur (le demandeur lui-même)
+            req_profile = getattr(instance.requester, 'profile', None)
+            if req_profile and req_profile.full_name:
+                validator_name = req_profile.full_name
+            elif instance.requester.get_full_name():
+                validator_name = instance.requester.get_full_name()
+            elif instance.requester.username == "man@sefamar.ma":
                 validator_name = "Mme EL MANSOURI"
             elif instance.requester.username == "chadi@sefamar.ma":
                 validator_name = "Chadi Ismail"
             elif instance.requester.username == "obelkadi.man@sefamar.ma":
                 validator_name = "O. BELKADI (Commercial)"
-            else:
+            elif instance.requester.username == "g.benelhassane@sefamar.ma":
                 validator_name = "Mme BENELHASSANE"
+            else:
+                validator_name = instance.requester.username
             
-            # Notify the purchasing team
+            # Notifier le demandeur lui-même
+            Notification.objects.create(
+                user=instance.requester,
+                message=f"Votre demande {instance.order_number} a été validée automatiquement sous votre nom ({validator_name}) et transmise au service Achats."
+            )
+
+            # Notifier l'équipe achats
             purchasing_users = User.objects.filter(profile__role='purchasing')
             for p_user in purchasing_users:
                 Notification.objects.create(
@@ -531,10 +577,17 @@ class PurchaseRequestViewSet(viewsets.ModelViewSet):
         instance.save()
         
         # Display name logic
-        if validator.username == "man@sefamar.ma":
+        val_prof = getattr(validator, 'profile', None)
+        if val_prof and val_prof.full_name:
+            validator_name = val_prof.full_name
+        elif validator.get_full_name():
+            validator_name = validator.get_full_name()
+        elif validator.username == "man@sefamar.ma":
             validator_name = "Mme EL MANSOURI"
         elif validator.username == "chadi@sefamar.ma":
             validator_name = "Chadi Ismail"
+        elif validator.username == "obelkadi.man@sefamar.ma":
+            validator_name = "O. BELKADI (Commercial)"
         elif validator.username == "g.benelhassane@sefamar.ma":
             validator_name = "Mme BENELHASSANE"
         else:

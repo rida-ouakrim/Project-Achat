@@ -35,6 +35,7 @@ class Profile(models.Model):
     department = models.CharField(max_length=100, blank=True, default='')
     validator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_requesters')
     validators = models.ManyToManyField(User, blank=True, related_name='supervised_profiles')
+    auto_validate = models.BooleanField(default=False, verbose_name="Auto-validation (Valider automatiquement par le demandeur)")
 
     def save(self, *args, **kwargs):
         if self.company and self.company.upper() == 'SUCCURSALE':
